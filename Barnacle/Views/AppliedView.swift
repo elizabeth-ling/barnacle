@@ -2,30 +2,45 @@ import SwiftUI
 import SwiftData
 
 /// Placeholder for the applied list. Spec `05` builds the real screen plus the global
-/// `⌘J` overlay that adds to it from any app.
+/// `⌘J` overlay that adds to it from any app. Chrome comes from spec `06`'s design system.
 struct AppliedView: View {
     @Query(sort: \Application.dateApplied, order: .reverse)
     private var applications: [Application]
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            ScreenHeader("Applied")
+
             if applications.isEmpty {
-                ContentUnavailableView(
-                    "Nothing logged yet",
-                    systemImage: "checkmark.circle",
-                    description: Text("Applications you log will appear here.")
+                EmptyState(
+                    title: "Nothing logged yet",
+                    message: "Applications you log will appear here.",
+                    systemImage: "checkmark.circle"
                 )
             } else {
-                List(applications) { application in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(application.jobTitle)
-                        Text("\(application.companyName) · \(application.status.displayName)")
-                            .foregroundStyle(.secondary)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(applications) { application in
+                            CompactRow(
+                                title: application.jobTitle,
+                                metadata: metadata(for: application)
+                            ) {
+                                Text(application.status.displayName)
+                            }
+
+                            Hairline()
+                        }
                     }
                 }
             }
         }
-        .navigationTitle("Applied")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
+    }
+
+    private func metadata(for application: Application) -> String {
+        let date = application.dateApplied.formatted(date: .abbreviated, time: .omitted)
+        return "\(application.companyName) \u{00B7} \(date)"
     }
 }
 

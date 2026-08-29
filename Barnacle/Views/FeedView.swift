@@ -3,6 +3,7 @@ import SwiftData
 
 /// Placeholder for the feed. Spec `02` builds the real list: internships newest-first by
 /// `effectiveDate`, company filter, sort toggle, click-to-open, and the `+` add-company button.
+/// The chrome here is spec `06`'s design system, so `02` styles nothing from scratch.
 struct FeedView: View {
     @Query(sort: \JobPosting.dateFirstSeen, order: .reverse)
     private var postings: [JobPosting]
@@ -14,24 +15,40 @@ struct FeedView: View {
     }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            ScreenHeader("Feed")
+
             if postings.isEmpty {
-                ContentUnavailableView(
-                    "No postings yet",
-                    systemImage: "tray",
-                    description: Text("Add a company to start tracking internships.")
+                EmptyState(
+                    title: "No postings yet",
+                    message: "Add a company to start tracking internships.",
+                    systemImage: "tray"
                 )
             } else {
-                List(sortedPostings) { posting in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(posting.title)
-                        Text(posting.companyName)
-                            .foregroundStyle(.secondary)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(sortedPostings) { posting in
+                            CompactRow(title: posting.title, metadata: metadata(for: posting)) {
+                                if let location = posting.location {
+                                    Text(location)
+                                }
+                            }
+
+                            Hairline()
+                        }
                     }
                 }
             }
         }
-        .navigationTitle("Feed")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
+        // Spec `03` opens the add-company modal from here.
+        .floatingAddButton(help: "Add a company") {}
+    }
+
+    private func metadata(for posting: JobPosting) -> String {
+        let date = posting.effectiveDate.formatted(date: .abbreviated, time: .omitted)
+        return "\(posting.companyName) \u{00B7} \(date)"
     }
 }
 

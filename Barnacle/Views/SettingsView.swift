@@ -4,12 +4,21 @@ import SwiftUI
 /// ntfy topic and Claude API key come later still.
 struct SettingsView: View {
     var body: some View {
-        Form {
-            Text("Settings arrive with notifications (spec 04).")
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: Theme.Metrics.fieldSpacing) {
+            Text("Settings")
+                .font(Theme.Typography.sectionTitle)
+                .foregroundStyle(Theme.Palette.textPrimary)
+
+            Text("Notification preferences arrive with spec 04.")
+                .font(Theme.Typography.body)
+                .foregroundStyle(Theme.Palette.textSecondary)
+
+            Spacer(minLength: 0)
         }
-        .formStyle(.grouped)
-        .frame(width: 420, height: 160)
+        .padding(Theme.Metrics.screenPadding)
+        .frame(width: 420, height: 160, alignment: .topLeading)
+        .screenBackground()
+        .preferredColorScheme(.light)
     }
 }
 
