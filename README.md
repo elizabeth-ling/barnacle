@@ -1,6 +1,6 @@
 ## barnacle — cling to the companies you care most about, catch every posting
 
-a personal macOS app that tracks internship postings from a hand-picked set of companies, surfaces them newest-first, sends notifications to your iPhone, and logs applications. includes a floating window via a global ⌘J shortcut that allows you to seamlessly access the app.
+an intentionally narrow Swift app that tracks internship postings from a hand-picked set of companies, surfaces them newest-first, sends notifications to your iPhone, and logs applications. includes a floating window via a global ⌘J shortcut that allows for seamless access.
 
 ### features
 - add target companies, barnacle scrapes every 15 minutes
