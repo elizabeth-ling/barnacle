@@ -1,3 +1,10 @@
 /.claude/
 context/current-feature.md
 
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
