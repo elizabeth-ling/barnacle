@@ -2,9 +2,10 @@ import SwiftUI
 import AppKit
 
 /// Menu-bar extra contents (§8). The unread-new count belongs on the label and lands with
-/// spec `04`; "Refresh now" gets wired to the scrape loop in spec `01`.
+/// spec `04`.
 struct MenuBarContent: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
 
     var body: some View {
         Button("Open Barnacle") {
@@ -12,10 +13,10 @@ struct MenuBarContent: View {
             openWindow(id: BarnacleWindow.main)
         }
 
-        Button("Refresh Now") {
-            // Wired to the scrape loop in spec 01.
+        Button(scrapeCoordinator.isScraping ? "Refreshing\u{2026}" : "Refresh Now") {
+            Task { await scrapeCoordinator.refreshNow() }
         }
-        .disabled(true)
+        .disabled(scrapeCoordinator.isScraping)
 
         Divider()
 
