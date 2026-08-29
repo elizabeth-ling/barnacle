@@ -184,11 +184,23 @@ but the entity stands alone.
 
 ## 6. Internship filter
 
-A posting counts as an internship if its **title**, lowercased, contains any of:
-`intern`, `internship`, `co-op`, `co op`, `coop`.
+A posting counts as an internship if its **title**, lowercased, contains any of these as a
+**whole word** (with an optional plural `s`): `intern`, `internship`, `co-op`, `co op`, `coop`.
 
-`intern` already catches "intern" and "internship." Include the co-op variants because some
-companies use that term. This runs inside each adapter so we never store non-internship jobs.
+Include the co-op variants because some companies use that term. This runs inside each adapter
+so we never store non-internship jobs.
+
+**Match whole words, not substrings.** A plain `contains "intern"` check reads *"Internal Audit
+Lead"* as an internship — on Stripe's live Greenhouse board that was 9 false positives out of 11
+matches, all of which would have reached the feed and fired notifications. Word boundaries drop
+those while still catching "Intern", "Interns", "Internship", and the co-op spellings. The
+optional trailing `s` is what catches plurals, since `intern` as a whole word does not match
+"Interns" on its own. `internship` earns its own entry under this rule: whole-word `intern` no
+longer covers it, the way a substring check did.
+
+Implemented in `InternshipFilter` (`Barnacle/Models/InternshipFilter.swift`) as a per-keyword
+regex, `\b<keyword>s?\b`, against the lowercased title. Keep the keyword list as the source of
+truth — the matching rule is applied to every entry in it.
 
 ---
 
