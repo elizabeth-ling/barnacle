@@ -75,8 +75,8 @@ the user asked for. Ship light mode first.
 
 ## Acceptance criteria
 
-- [ ] Headings render in a serif (New York); body/UI in SF Pro.
-- [ ] Palette matches the tokens above; the only accent is Claude orange.
-- [ ] Feed rows are compact with clear title / metadata hierarchy and a subtle hover.
-- [ ] The `+` button is a floating orange circle, bottom-right.
+- [x] Headings render in a serif (New York); body/UI in SF Pro.
+- [x] Palette matches the tokens above; the only accent is Claude orange.
+- [x] Feed rows are compact with clear title / metadata hierarchy and a subtle hover.
+- [x] The `+` button is a floating orange circle, bottom-right.
 - [ ] Modal and overlay use the warm surface, serif title, and tiny-font fields.
