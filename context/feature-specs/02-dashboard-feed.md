@@ -32,9 +32,17 @@ Each row shows, per the user's request:
 - **Date & time posted** — use the *effective date* (`datePosted ?? dateFirstSeen`).
   Format relatively for recent items ("2h ago", "Yesterday"), absolute for older
   ("Aug 21"). On hover, show the full timestamp as a tooltip.
-- Optional: `location` if present, as muted trailing text.
-- A small **"NEW"** badge (Claude-orange dot or pill) on postings first seen in the last
-  24h or not yet viewed by the user. Clear the flag once the row is clicked.
+- **Location** — `location` when the ATS provides one, as muted trailing text immediately
+  before the date. Hidden entirely when the source doesn't supply one, rather than showing
+  a placeholder.
+- A small **"NEW"** badge (Claude-orange dot or pill) on postings the user hasn't opened
+  yet. Clear the flag once the row is clicked.
+
+  *This originally read "first seen in the last 24h **or** not yet viewed," which fights the
+  clear-on-click rule: a posting clicked an hour after it arrived is still inside its 24h
+  window. Unviewed is the clause that survives — anything first seen in the last 24h is
+  unviewed anyway, unless the user already opened it, and then the badge must be gone.
+  Implemented as `JobPosting.viewedAt` / `isUnviewed`.*
 
 Keep rows compact and tidy (Postman-like density, tiny fonts — see spec `06`).
 
@@ -67,9 +75,9 @@ Keep rows compact and tidy (Postman-like density, tiny fonts — see spec `06`).
 
 ## Acceptance criteria
 
-- [ ] Postings render newest-first by default with company, title, and posted date/time.
-- [ ] Clicking a row opens the correct posting URL in the browser and clears its NEW badge.
-- [ ] Company filter narrows the list; "All companies" restores it.
-- [ ] Sort toggle flips order and the choice survives an app restart.
+- [x] Postings render newest-first by default with company, title, and posted date/time.
+- [x] Clicking a row opens the correct posting URL in the browser and clears its NEW badge.
+- [x] Company filter narrows the list; "All companies" restores it.
+- [x] Sort toggle flips order and the choice survives an app restart.
 - [ ] The `+` button opens the Add-Company modal.
-- [ ] New postings from a background scrape appear without user action.
+- [x] New postings from a background scrape appear without user action.
