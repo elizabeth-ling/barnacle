@@ -16,7 +16,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		BA0000000000000000000004 /* Barnacle */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Barnacle; sourceTree = "<group>"; };
+		BA0000000000000000000004 /* Barnacle */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Barnacle;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
