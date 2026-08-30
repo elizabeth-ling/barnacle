@@ -37,6 +37,10 @@ final class JobPosting {
     /// the user may still want the record (§5).
     var closedAt: Date?
 
+    /// When the user opened this posting from the feed. Nil until they click the row, which
+    /// is what clears its NEW badge (spec `02`). Optional, so it migrates in place.
+    var viewedAt: Date?
+
     init(
         id: UUID = UUID(),
         companyID: UUID,
@@ -47,7 +51,8 @@ final class JobPosting {
         dateFirstSeen: Date = Date(),
         location: String? = nil,
         rawID: String,
-        closedAt: Date? = nil
+        closedAt: Date? = nil,
+        viewedAt: Date? = nil
     ) {
         self.id = id
         self.companyID = companyID
@@ -59,6 +64,7 @@ final class JobPosting {
         self.location = location
         self.rawID = rawID
         self.closedAt = closedAt
+        self.viewedAt = viewedAt
     }
 
     /// The date used for display and sorting everywhere in the app (§5).
@@ -69,6 +75,17 @@ final class JobPosting {
     /// True once the posting has disappeared from its source.
     var isClosed: Bool {
         closedAt != nil
+    }
+
+    /// Drives the feed's NEW badge (spec `02`).
+    ///
+    /// The spec words this as "first seen in the last 24h *or* not yet viewed," but those two
+    /// clauses fight each other: a posting scraped an hour ago and then clicked would still be
+    /// inside its 24h window, while the spec also requires the click to clear the badge. Unviewed
+    /// is the clause that survives — a posting first seen in the last 24h is unviewed anyway,
+    /// unless the user already opened it, and then the badge must be gone.
+    var isUnviewed: Bool {
+        viewedAt == nil
     }
 }
 
