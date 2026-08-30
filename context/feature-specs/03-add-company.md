@@ -40,6 +40,11 @@ For each URL, run detection to set `atsType` and `atsToken`:
    look for known ATS URLs/script tags to reclassify. Nice-to-have; the generic adapter is
    the safe fallback if detection is unsure.
 
+**One classification, several URLs.** `Company` (spec `00` §5) holds a single `atsType` /
+`atsToken`, so a company adopts its **first** URL's classification. Every URL's detected ATS is
+shown in the modal, so a company whose URLs disagree is visible rather than silent. Splitting the
+classification per URL would mean a schema change; nothing needed it yet.
+
 ### Validation before saving
 
 - After detecting, do a **one-shot test fetch** using the chosen adapter.
@@ -59,10 +64,10 @@ Not a full CRUD screen — keep it simple:
 
 ## Acceptance criteria
 
-- [ ] `+` opens the modal; name + one URL + Add creates a tracked company.
-- [ ] A Greenhouse/Lever URL is correctly classified with the right token.
-- [ ] A test fetch runs on Add; success confirms, failure explains and offers "save as
+- [x] `+` opens the modal; name + one URL + Add creates a tracked company.
+- [x] A Greenhouse/Lever URL is correctly classified with the right token.
+- [x] A test fetch runs on Add; success confirms, failure explains and offers "save as
       generic."
-- [ ] Multiple URLs can be attached to one company.
-- [ ] The new company appears in the Feed's company filter and is scraped on the next run.
-- [ ] The user can deactivate or remove a company.
+- [x] Multiple URLs can be attached to one company.
+- [x] The new company appears in the Feed's company filter and is scraped on the next run.
+- [x] The user can deactivate or remove a company.
