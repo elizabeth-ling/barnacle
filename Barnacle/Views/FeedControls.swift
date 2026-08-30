@@ -44,6 +44,10 @@ struct CompanyFilterControl: View {
     let companies: [Company]
     @Binding var selection: UUID?
 
+    /// Spec `03` puts company management behind the filter, since that's where tracked
+    /// companies are already visible. Defaulted so previews and tests can ignore it.
+    var onManageCompanies: () -> Void = {}
+
     @State private var isPresented = false
     @State private var searchText = ""
 
@@ -118,6 +122,13 @@ struct CompanyFilterControl: View {
                 }
             }
             .frame(maxHeight: 220)
+
+            Hairline()
+
+            FilterOption(name: "Manage companies\u{2026}", isSelected: false) {
+                isPresented = false
+                onManageCompanies()
+            }
         }
         .frame(width: 220)
         .background(Theme.Palette.surface)

@@ -24,6 +24,9 @@ struct FeedView: View {
     /// Not persisted: the spec only asks for the sort choice to survive a restart.
     @State private var companyFilter: UUID?
 
+    @State private var isAddingCompany = false
+    @State private var isManagingCompanies = false
+
     private var sortOrder: FeedSortOrder {
         FeedSortOrder(rawValue: storedSortOrder) ?? .newest
     }
@@ -32,9 +35,17 @@ struct FeedView: View {
         Binding(get: { sortOrder }, set: { storedSortOrder = $0.rawValue })
     }
 
+    /// A company can now be removed while its filter is active (spec `03`). The filter control
+    /// falls back to "All companies" when it can't name the selection, so the list has to agree
+    /// — otherwise the feed stays filtered to a company nothing on screen mentions.
+    private var activeCompanyFilter: UUID? {
+        guard let companyFilter, companies.contains(where: { $0.id == companyFilter }) else { return nil }
+        return companyFilter
+    }
+
     private var visiblePostings: [JobPosting] {
         postings
-            .filter { companyFilter == nil || $0.companyID == companyFilter }
+            .filter { activeCompanyFilter == nil || $0.companyID == activeCompanyFilter }
             .sorted { lhs, rhs in
                 switch sortOrder {
                 case .newest: lhs.effectiveDate > rhs.effectiveDate
@@ -47,7 +58,11 @@ struct FeedView: View {
         VStack(spacing: 0) {
             ScreenHeader(title: "Feed") {
                 HStack(spacing: 6) {
-                    CompanyFilterControl(companies: companies, selection: $companyFilter)
+                    CompanyFilterControl(
+                        companies: companies,
+                        selection: $companyFilter,
+                        onManageCompanies: { isManagingCompanies = true }
+                    )
                     FeedSortToggle(selection: sortOrderBinding)
                     FeedRefreshControl()
                 }
@@ -57,8 +72,13 @@ struct FeedView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenBackground()
-        // Spec `03` owns the add-company modal; until it lands there is nothing to open.
-        .floatingAddButton(help: "Add a company") {}
+        .floatingAddButton(help: "Add a company") { isAddingCompany = true }
+        .sheet(isPresented: $isAddingCompany) {
+            AddCompanyView()
+        }
+        .sheet(isPresented: $isManagingCompanies) {
+            ManageCompaniesView()
+        }
     }
 
     @ViewBuilder

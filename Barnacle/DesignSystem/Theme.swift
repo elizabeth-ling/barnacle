@@ -27,6 +27,9 @@ enum Theme {
         static let accentHover = Color(hex: 0xC25E42)
         /// `accent/tintBg` — very light orange fill behind badges and selection.
         static let accentTint = Color(hex: 0xF6E9E2)
+        /// The one non-accent hue in the palette: spec `03` asks for a green check on a careers
+        /// URL that validated. Muted to sit beside the warm greys rather than shout over them.
+        static let success = Color(hex: 0x4E7A55)
     }
 
     /// Serif headings (New York, via `design: .serif`), SF Pro for body and UI. Sizes are
