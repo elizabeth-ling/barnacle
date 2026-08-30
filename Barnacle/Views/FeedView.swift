@@ -1,58 +1,140 @@
 import SwiftUI
 import SwiftData
+import AppKit
+import OSLog
 
-/// Placeholder for the feed. Spec `02` builds the real list: internships newest-first by
-/// `effectiveDate`, company filter, sort toggle, click-to-open, and the `+` add-company button.
-/// The chrome here is spec `06`'s design system, so `02` styles nothing from scratch.
+/// The main dashboard (spec `02`): internships from tracked companies, newest-first by effective
+/// date, filtered by company, click-to-open. Every pixel of chrome comes from spec `06`.
 struct FeedView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
+
+    /// `effectiveDate` is computed, so SwiftData can't sort on it — this query gives a stable
+    /// order and `visiblePostings` does the real sort in memory. The list is small (one user's
+    /// hand-picked companies), so the cost is nil and the reactivity is the point: postings the
+    /// background scrape inserts land here with no reload.
     @Query(sort: \JobPosting.dateFirstSeen, order: .reverse)
     private var postings: [JobPosting]
 
-    /// `effectiveDate` is computed, so SwiftData can't sort on it — resolve the newest-first
-    /// order here. Spec `02` owns the real list, including the sort toggle.
-    private var sortedPostings: [JobPosting] {
-        postings.sorted { $0.effectiveDate > $1.effectiveDate }
+    @Query(sort: \Company.name)
+    private var companies: [Company]
+
+    @AppStorage(FeedSortOrder.storageKey) private var storedSortOrder = FeedSortOrder.newest.rawValue
+
+    /// Not persisted: the spec only asks for the sort choice to survive a restart.
+    @State private var companyFilter: UUID?
+
+    private var sortOrder: FeedSortOrder {
+        FeedSortOrder(rawValue: storedSortOrder) ?? .newest
+    }
+
+    private var sortOrderBinding: Binding<FeedSortOrder> {
+        Binding(get: { sortOrder }, set: { storedSortOrder = $0.rawValue })
+    }
+
+    private var visiblePostings: [JobPosting] {
+        postings
+            .filter { companyFilter == nil || $0.companyID == companyFilter }
+            .sorted { lhs, rhs in
+                switch sortOrder {
+                case .newest: lhs.effectiveDate > rhs.effectiveDate
+                case .oldest: lhs.effectiveDate < rhs.effectiveDate
+                }
+            }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            ScreenHeader("Feed")
+            ScreenHeader(title: "Feed") {
+                HStack(spacing: 6) {
+                    CompanyFilterControl(companies: companies, selection: $companyFilter)
+                    FeedSortToggle(selection: sortOrderBinding)
+                    FeedRefreshControl()
+                }
+            }
 
-            if postings.isEmpty {
-                EmptyState(
-                    title: "No postings yet",
-                    message: "Add a company to start tracking internships.",
-                    systemImage: "tray"
-                )
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(sortedPostings) { posting in
-                            CompactRow(title: posting.title, metadata: metadata(for: posting)) {
-                                if let location = posting.location {
-                                    Text(location)
-                                }
-                            }
+            content
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
+        // Spec `03` owns the add-company modal; until it lands there is nothing to open.
+        .floatingAddButton(help: "Add a company") {}
+    }
 
-                            Hairline()
-                        }
+    @ViewBuilder
+    private var content: some View {
+        if companies.isEmpty && postings.isEmpty {
+            EmptyState(
+                title: "No companies yet",
+                message: "Add a company with the + button to start tracking internships.",
+                systemImage: "tray"
+            )
+        } else if postings.isEmpty && scrapeCoordinator.isScraping {
+            // First scrape in flight: a quiet inline spinner, never a blocking modal.
+            VStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Checking for internships\u{2026}")
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if postings.isEmpty {
+            EmptyState(
+                title: "No internships found yet",
+                message: "We check every 15 minutes.",
+                systemImage: "clock"
+            ) {
+                Button("Refresh now") {
+                    Task { await scrapeCoordinator.refreshNow() }
+                }
+                .buttonStyle(.barnacleSecondary)
+                .disabled(scrapeCoordinator.isScraping)
+            }
+        } else if visiblePostings.isEmpty {
+            EmptyState(
+                title: "Nothing from this company yet",
+                message: "Switch back to all companies to see the rest of the feed.",
+                systemImage: "line.3.horizontal.decrease"
+            ) {
+                Button("All companies") {
+                    companyFilter = nil
+                }
+                .buttonStyle(.barnacleSecondary)
+            }
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(visiblePostings) { posting in
+                        PostingRow(posting: posting) { open(posting) }
+                        Hairline()
                     }
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .screenBackground()
-        // Spec `03` opens the add-company modal from here.
-        .floatingAddButton(help: "Add a company") {}
     }
 
-    private func metadata(for posting: JobPosting) -> String {
-        let date = posting.effectiveDate.formatted(date: .abbreviated, time: .omitted)
-        return "\(posting.companyName) \u{00B7} \(date)"
+    /// Opens the posting in the default browser and clears its NEW badge. The badge only clears
+    /// once the browser actually took the URL, so a malformed link doesn't quietly lose the flag.
+    private func open(_ posting: JobPosting) {
+        guard let url = URL(string: posting.url), NSWorkspace.shared.open(url) else {
+            FeedLog.logger.error("Could not open posting URL: \(posting.url, privacy: .public)")
+            return
+        }
+
+        if posting.viewedAt == nil {
+            posting.viewedAt = Date()
+        }
     }
+}
+
+enum FeedLog {
+    static let logger = Logger(subsystem: "com.elizabeth.barnacle", category: "feed")
 }
 
 #Preview {
     FeedView()
+        .frame(width: 720, height: 420)
         .modelContainer(BarnacleStore.makeContainer(inMemory: true))
+        .environment(ScrapeCoordinator(container: BarnacleStore.makeContainer(inMemory: true)))
 }
