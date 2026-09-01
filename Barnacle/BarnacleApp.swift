@@ -9,7 +9,25 @@ enum BarnacleWindow {
 @main
 struct BarnacleApp: App {
     /// Owned by the app so the scrape schedule outlives any window (spec `01`).
-    @State private var scrapeCoordinator = ScrapeCoordinator(container: BarnacleStore.shared)
+    @State private var scrapeCoordinator: ScrapeCoordinator
+
+    /// Consumes the coordinator's new-posting batches (spec `04`).
+    @State private var notifications: NotificationService
+
+    init() {
+        let notifications = NotificationService()
+        // Before the app finishes launching: a notification clicked while Barnacle is closed
+        // launches it and delivers the response during startup.
+        notifications.registerNotificationDelegate()
+
+        let scrapeCoordinator = ScrapeCoordinator(container: BarnacleStore.shared)
+        scrapeCoordinator.onNewPostings = { postings in
+            notifications.notify(about: postings)
+        }
+
+        _notifications = State(initialValue: notifications)
+        _scrapeCoordinator = State(initialValue: scrapeCoordinator)
+    }
 
     var body: some Scene {
         // A single main window rather than a WindowGroup: this is a one-window app,
@@ -17,7 +35,12 @@ struct BarnacleApp: App {
         Window("Barnacle", id: BarnacleWindow.main) {
             RootView()
                 .environment(scrapeCoordinator)
+                .environment(notifications)
+                .registersMainWindowOpener(with: notifications)
+                // Two tasks, not one: `requestAuthorization` suspends until the user answers
+                // the system prompt, and the first scrape must not wait behind that.
                 .task { scrapeCoordinator.start() }
+                .task { await notifications.requestAuthorization() }
         }
         .defaultSize(width: 820, height: 560)
         .modelContainer(BarnacleStore.shared)
@@ -32,6 +55,7 @@ struct BarnacleApp: App {
 
         Settings {
             SettingsView()
+                .environment(notifications)
         }
     }
 }
