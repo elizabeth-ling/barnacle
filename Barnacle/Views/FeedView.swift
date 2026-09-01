@@ -8,6 +8,7 @@ import OSLog
 struct FeedView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
+    @Environment(NotificationService.self) private var notifications
 
     /// `effectiveDate` is computed, so SwiftData can't sort on it — this query gives a stable
     /// order and `visiblePostings` does the real sort in memory. The list is small (one user's
@@ -27,6 +28,11 @@ struct FeedView: View {
     @State private var isAddingCompany = false
     @State private var isManagingCompanies = false
 
+    /// Set when the user clicks a notification (spec `04`): the feed narrows to that batch so
+    /// the postings the notification was about are the only thing on screen. Nil the rest of
+    /// the time, which is the normal feed.
+    @State private var revealedPostingIDs: Set<UUID>?
+
     private var sortOrder: FeedSortOrder {
         FeedSortOrder(rawValue: storedSortOrder) ?? .newest
     }
@@ -45,7 +51,12 @@ struct FeedView: View {
 
     private var visiblePostings: [JobPosting] {
         postings
-            .filter { activeCompanyFilter == nil || $0.companyID == activeCompanyFilter }
+            .filter { posting in
+                // A notification reveal replaces the company filter rather than combining with
+                // it — the point is to show that exact batch, whatever companies it spans.
+                if let revealedPostingIDs { return revealedPostingIDs.contains(posting.id) }
+                return activeCompanyFilter == nil || posting.companyID == activeCompanyFilter
+            }
             .sorted { lhs, rhs in
                 switch sortOrder {
                 case .newest: lhs.effectiveDate > rhs.effectiveDate
@@ -68,6 +79,16 @@ struct FeedView: View {
                 }
             }
 
+            // Spec `01` records per-company failures but nothing read them, so a company whose
+            // board has moved looked identical to one with no open internships.
+            if let failures = scrapeCoordinator.lastRun?.failures, !failures.isEmpty {
+                ScrapeFailureBanner(failures: failures) { isManagingCompanies = true }
+            }
+
+            if revealedPostingIDs != nil {
+                revealBanner
+            }
+
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -79,6 +100,40 @@ struct FeedView: View {
         .sheet(isPresented: $isManagingCompanies) {
             ManageCompaniesView()
         }
+        // Both paths matter: `.task` catches a notification clicked while Barnacle was closed
+        // (the reveal is already waiting by the time the Feed first appears), `.onChange` catches
+        // one clicked while it was open.
+        .task { applyPendingReveal() }
+        .onChange(of: notifications.pendingFeedReveal) { _, _ in applyPendingReveal() }
+        // The reveal overrides the company filter, so touching the filter has to dismiss it —
+        // otherwise picking a company would silently do nothing.
+        .onChange(of: companyFilter) { _, _ in revealedPostingIDs = nil }
+    }
+
+    /// Says why the feed is showing a subset, and gets the user back out of it.
+    private var revealBanner: some View {
+        HStack(spacing: 8) {
+            Text(revealBannerText)
+                .font(Theme.Typography.metadata)
+                .foregroundStyle(Theme.Palette.textSecondary)
+
+            Spacer(minLength: 8)
+
+            Button("Show all") {
+                revealedPostingIDs = nil
+                companyFilter = nil
+            }
+            .buttonStyle(.quietControl())
+        }
+        .padding(.horizontal, Theme.Metrics.screenPadding)
+        .padding(.vertical, 6)
+        .background(Theme.Palette.accentTint)
+        .overlay(alignment: .bottom) { Hairline() }
+    }
+
+    private var revealBannerText: String {
+        let count = visiblePostings.count
+        return count == 1 ? "Showing 1 new internship" : "Showing \(count) new internships"
     }
 
     @ViewBuilder
@@ -113,12 +168,15 @@ struct FeedView: View {
             }
         } else if visiblePostings.isEmpty {
             EmptyState(
-                title: "Nothing from this company yet",
-                message: "Switch back to all companies to see the rest of the feed.",
+                title: revealedPostingIDs == nil ? "Nothing from this company yet" : "Those postings are gone",
+                message: revealedPostingIDs == nil
+                    ? "Switch back to all companies to see the rest of the feed."
+                    : "They were removed along with their company. The rest of the feed is still here.",
                 systemImage: "line.3.horizontal.decrease"
             ) {
                 Button("All companies") {
                     companyFilter = nil
+                    revealedPostingIDs = nil
                 }
                 .buttonStyle(.barnacleSecondary)
             }
@@ -132,6 +190,21 @@ struct FeedView: View {
                 }
             }
         }
+    }
+
+    /// Narrows the feed to the postings a clicked notification was about (spec `04`).
+    ///
+    /// Ids that no longer resolve are dropped — a company can be removed, postings and all,
+    /// between the notification and the click — and a reveal that resolves to nothing is
+    /// ignored, so the click still brings the app forward but leaves the feed as it was.
+    private func applyPendingReveal() {
+        guard let request = notifications.takePendingFeedReveal() else { return }
+
+        let stored = Set(postings.map(\.id))
+        let resolved = Set(request.postingIDs).intersection(stored)
+        guard !resolved.isEmpty else { return }
+
+        revealedPostingIDs = resolved
     }
 
     /// Opens the posting in the default browser and clears its NEW badge. The badge only clears
@@ -157,4 +230,5 @@ enum FeedLog {
         .frame(width: 720, height: 420)
         .modelContainer(BarnacleStore.makeContainer(inMemory: true))
         .environment(ScrapeCoordinator(container: BarnacleStore.makeContainer(inMemory: true)))
+        .environment(NotificationService())
 }
