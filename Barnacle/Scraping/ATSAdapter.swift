@@ -49,17 +49,42 @@ enum PageFetch {
     }
 }
 
+/// Internet date-time parsing shared by the JSON adapters.
+///
+/// ATSes disagree about fractional seconds — Greenhouse usually omits them, Ashby always
+/// sends them — so try both. An unparseable date is nil rather than fatal: the posting
+/// still counts, it just falls back to `dateFirstSeen` (§5).
+enum ISO8601Date {
+    private static let plain: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static func parse(_ raw: String?) -> Date? {
+        guard let raw, !raw.isEmpty else { return nil }
+        return plain.date(from: raw) ?? fractional.date(from: raw)
+    }
+}
+
 /// Maps a detected ATS to the adapter that speaks its API.
 ///
-/// Ashby, SmartRecruiters, and Workday return nil until their adapters land — the scrape loop
+/// SmartRecruiters and Workday return nil until their adapters land — the scrape loop
 /// records that as a per-company failure and keeps going.
 enum ATSAdapterRegistry {
     static func adapter(for atsType: ATSType) -> ATSAdapter? {
         switch atsType {
         case .greenhouse: GreenhouseAdapter()
         case .lever: LeverAdapter()
+        case .ashby: AshbyAdapter()
         case .generic: GenericAdapter()
-        case .ashby, .smartRecruiters, .workday: nil
+        case .smartRecruiters, .workday: nil
         }
     }
 }

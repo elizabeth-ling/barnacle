@@ -19,7 +19,6 @@ struct GreenhouseAdapter: ATSAdapter {
         }
 
         let payload = try await fetchJSON(Payload.self, from: url)
-        let parseDate = Self.makeDateParser()
 
         return payload.jobs
             .filter { InternshipFilter.isInternship(title: $0.title) }
@@ -28,7 +27,7 @@ struct GreenhouseAdapter: ATSAdapter {
                     rawID: String(job.id),
                     title: job.title,
                     url: job.absoluteURL,
-                    datePosted: parseDate(job.updatedAt),
+                    datePosted: ISO8601Date.parse(job.updatedAt),
                     location: job.location?.name
                 )
             }
@@ -56,21 +55,6 @@ struct GreenhouseAdapter: ATSAdapter {
                 case absoluteURL = "absolute_url"
                 case updatedAt = "updated_at"
             }
-        }
-    }
-
-    /// Greenhouse sends internet date-time (`2026-08-25T17:40:40-04:00`), occasionally with
-    /// fractional seconds. An unparseable date is nil rather than fatal: the posting still
-    /// counts, it just falls back to `dateFirstSeen` (§5).
-    private static func makeDateParser() -> (String?) -> Date? {
-        let plain = ISO8601DateFormatter()
-        plain.formatOptions = [.withInternetDateTime]
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        return { raw in
-            guard let raw, !raw.isEmpty else { return nil }
-            return plain.date(from: raw) ?? fractional.date(from: raw)
         }
     }
 }
