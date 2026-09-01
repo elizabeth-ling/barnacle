@@ -45,8 +45,12 @@ Build in this order. First two make the app useful.
   `createdAt` (epoch ms) `→ datePosted`, `categories.location → location`.
 
 **Ashby**
-- Resolve `{token}` from `jobs.ashbyhq.com/{token}`. Use Ashby's public posting JSON API.
-- Map its job id, title, external URL, published date, location analogously.
+- Endpoint: `https://api.ashbyhq.com/posting-api/job-board/{token}`
+- `{token}` is the board name in `jobs.ashbyhq.com/{token}`, parsed at company-add time (spec `03`).
+- Map: `id` (UUID string) `→ rawID`, `title → title`, `jobUrl → url` (falling back to `applyUrl`),
+  `publishedAt → datePosted`, `location → location`.
+- Jobs also carry `isListed`; we deliberately don't filter on it (an unlisted posting is still a
+  real opening with a working URL).
 
 **SmartRecruiters**
 - Endpoint: `https://api.smartrecruiters.com/v1/companies/{token}/postings`

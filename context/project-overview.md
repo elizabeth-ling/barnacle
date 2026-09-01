@@ -103,7 +103,7 @@ When the user adds a company URL, run **adapter detection** (spec `03`) to class
 |---|---|---|
 | **Greenhouse** | `boards.greenhouse.io/{token}` or `greenhouse.io` | `https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true` |
 | **Lever** | `jobs.lever.co/{token}` | `https://api.lever.co/v0/postings/{token}?mode=json` |
-| **Ashby** | `jobs.ashbyhq.com/{token}` | Ashby posting API (JSON); resolve `{token}` from URL. |
+| **Ashby** | `jobs.ashbyhq.com/{token}` | `https://api.ashbyhq.com/posting-api/job-board/{token}` |
 | **SmartRecruiters** | `smartrecruiters.com/{token}` | `https://api.smartrecruiters.com/v1/companies/{token}/postings` |
 | **Workday** | `myworkdayjobs.com` | Workday CXS JSON POST endpoint (more involved; implement last). |
 | **Generic** | anything else | Fetch HTML, parse with SwiftSoup + heuristics; optional LLM fallback (below). |
