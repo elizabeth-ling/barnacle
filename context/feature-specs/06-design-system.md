@@ -79,4 +79,4 @@ the user asked for. Ship light mode first.
 - [x] Palette matches the tokens above; the only accent is Claude orange.
 - [x] Feed rows are compact with clear title / metadata hierarchy and a subtle hover.
 - [x] The `+` button is a floating orange circle, bottom-right.
-- [ ] Modal and overlay use the warm surface, serif title, and tiny-font fields.
+- [x] Modal and overlay use the warm surface, serif title, and tiny-font fields.

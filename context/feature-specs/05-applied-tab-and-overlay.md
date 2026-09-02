@@ -95,35 +95,38 @@ there's one code path for creating applications.
 ## Acceptance criteria
 
 **Applied tab**
-- [ ] Applications list newest-first with company, role, applied date, and status.
-- [ ] Status can be changed inline; url opens in browser; notes are editable.
-- [ ] "+ Add application" creates a record via the shared form.
+- [x] Applications list newest-first with company, role, applied date, and status.
+- [x] Status can be changed inline; url opens in browser; notes are editable.
+- [x] "+ Add application" creates a record via the shared form.
 - [x] Tab is fully usable offline.
 
 **Overlay**
 - [x] `⌘J` opens the overlay while a *different* app is focused.
 - [x] `⌘J` opens the overlay while another app is **full-screen** (verify with full-screen
       Chrome specifically — the panel floats above it, no Space switch).
-- [ ] Overlay is focused for immediate typing without fully activating Barnacle.
-- [ ] `Return` saves and closes; `Esc` closes without saving; focus returns to prior app.
-- [ ] A saved overlay entry appears in the Applied tab right away.
+- [x] Overlay is focused for immediate typing without fully activating Barnacle.
+- [x] `Return` saves and closes; `Esc` closes without saving; focus returns to prior app.
+- [x] A saved overlay entry appears in the Applied tab right away.
 - [x] Works whether or not the main window is open, because the app runs in the menu bar.
 
 ### Verification status
 
-Checked boxes were exercised against the running app. The panel was confirmed over a
-full-screen Chromium browser (Arc) — layer 3, on the browser's own Space, with Barnacle's main
-window left behind on its Space and no Space switch — from three starting states: another app
-frontmost, that app full-screen, and Barnacle itself frontmost. `⌘J` also toggles the panel
-closed. The hotkey registers in `BarnacleApp.init()`, so it works with no window open.
+All boxes were exercised against the running app on 2026-09-02.
 
-Unchecked boxes are code-complete but unconfirmed, all for the same reason: **the boxes that
-remain need a real keystroke.** Synthetic events (`CGEvent` posted at the HID or session tap)
-route to the app underneath in this environment even when Barnacle is the active app and the
-panel is the key window showing a blinking insertion point — a state in which real typing must
-land in the field — so they can neither confirm nor refute the typing path. The company field
-takes focus on open (caret visible in the panel), and the company autocomplete was seen working
-(typing "Str" produced a "Stripe" chip from the tracked companies).
+The panel was confirmed over a full-screen Chromium browser (Arc) — layer 3, on the browser's
+own Space, with Barnacle's main window left behind on its Space and no Space switch — from
+three starting states: another app frontmost, that app full-screen, and Barnacle itself
+frontmost. `⌘J` also toggles the panel closed, and registers in `BarnacleApp.init()`, so it
+works with no window open.
+
+The typing path was the last thing to confirm, and it took a real keystroke to do it: synthetic
+events (`CGEvent` posted at the HID or session tap) route to the app underneath in this
+environment even while the panel is key and showing a blinking insertion point, so they could
+neither confirm nor refute it. Typed by hand, the company field is focused the moment the panel
+opens, the autocomplete narrows as you type, `Return` saves and closes, `Esc` closes without
+saving, focus returns to the app that had it, and the record is in the Applied tab immediately.
+The tab's own list, inline status dropdown, link, notes, edit, delete, and the "+ Add
+application" sheet were confirmed the same way.
 
 ### Deviation: the overlay activates Barnacle, without moving anything
 
