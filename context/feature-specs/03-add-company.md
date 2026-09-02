@@ -9,7 +9,7 @@ On save, detect which ATS the URL uses so the scraper knows which adapter and to
 
 ## The modal
 
-Opened by the floating `+` button (bottom-right of the Feed).
+Opened by the `+` button at the end of the Feed's controls row.
 
 Fields:
 - **Company name** (text, required).

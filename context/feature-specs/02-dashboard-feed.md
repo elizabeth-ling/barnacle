@@ -14,14 +14,13 @@ view on launch.
 ┌─────────────────────────────────────────────────────────┐
 │  Feed        Applied                         [Refresh ↻] │   ← tab bar + refresh
 ├─────────────────────────────────────────────────────────┤
-│  [ Filter by company ▾ ]        Sort: ● Newest  ○ Oldest │   ← controls row
+│  [ Filter by company ▾ ]   Sort: ● Newest ○ Oldest   ( + ) │   ← controls row
 ├─────────────────────────────────────────────────────────┤
 │  Stripe        Software Engineer Intern      2h ago      │   ← row (clickable)
 │  Ramp          Product Design Intern         5h ago      │
 │  Notion        ML Research Intern            Yesterday   │
 │  …                                                        │
 └─────────────────────────────────────────────────────────┘
-                                                      ( + )   ← floating add-company button
 ```
 
 ## Row content
@@ -57,7 +56,8 @@ Keep rows compact and tidy (Postman-like density, tiny fonts — see spec `06`).
   choice across launches.
 - **Refresh now:** triggers `ScrapeCoordinator.scrapeAll()` (spec `01`); show a subtle
   spinner while running and the last-updated time when idle.
-- **Floating `+` button (bottom-right):** opens the Add-Company modal (spec `03`).
+- **`+` button (end of the controls row):** opens the Add-Company modal (spec `03`).
+  *Moved there from a floating bottom-right circle on 2026-09-02; see spec `06`.*
 
 ## Empty & loading states
 
@@ -79,5 +79,5 @@ Keep rows compact and tidy (Postman-like density, tiny fonts — see spec `06`).
 - [x] Clicking a row opens the correct posting URL in the browser and clears its NEW badge.
 - [x] Company filter narrows the list; "All companies" restores it.
 - [x] Sort toggle flips order and the choice survives an app restart.
-- [ ] The `+` button opens the Add-Company modal.
+- [x] The `+` button opens the Add-Company modal.
 - [x] New postings from a background scrape appear without user action.

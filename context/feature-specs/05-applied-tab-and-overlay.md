@@ -22,9 +22,13 @@ A table/list of `Application` records, most recent `dateApplied` first:
 | Stripe | SWE Intern | Aug 27 | Applied ▾ |
 | Ramp | Design Intern | Aug 24 | Interviewing ▾ |
 
-- **Status** is an inline dropdown: `Applied, Interviewing, Offer, Rejected, Ghosted`.
+- **Status** is an inline dropdown: `Applied, Interviewing, Offer, Rejected, Ghosted`. Each
+  status carries its own colour (spec `06`), so the list can be scanned by status alone; the
+  dropdown and the counts strip both use it.
 - Clicking a row (or a disclosure) reveals `url` (opens in browser) and `notes`.
-- An in-window **"+ Add application"** button opens the same entry form the overlay uses.
+- An in-window **`+`** button opens the same entry form the overlay uses. It sits at the end of
+  the header's control row, next to the sort toggle. *(Moved there from a floating bottom-right
+  circle on 2026-09-02; see spec `06`.)*
 - Allow edit and delete of a row.
 - Optional light touch: a small count per status at the top ("12 applied · 3 interviewing").
 
@@ -97,7 +101,7 @@ there's one code path for creating applications.
 **Applied tab**
 - [x] Applications list newest-first with company, role, applied date, and status.
 - [x] Status can be changed inline; url opens in browser; notes are editable.
-- [x] "+ Add application" creates a record via the shared form.
+- [x] The `+` creates a record via the shared form.
 - [x] Tab is fully usable offline.
 
 **Overlay**
@@ -125,8 +129,13 @@ environment even while the panel is key and showing a blinking insertion point, 
 neither confirm nor refute it. Typed by hand, the company field is focused the moment the panel
 opens, the autocomplete narrows as you type, `Return` saves and closes, `Esc` closes without
 saving, focus returns to the app that had it, and the record is in the Applied tab immediately.
-The tab's own list, inline status dropdown, link, notes, edit, delete, and the "+ Add
-application" sheet were confirmed the same way.
+The tab's own list, inline status dropdown, link, notes, edit, delete, and the `+` sheet were
+confirmed the same way.
+
+Re-confirmed on 2026-09-02 after the status colours landed: the header `+` opens the sheet, a
+record saved from it appears immediately, and the coloured dropdown and counts strip render as
+specified. That check is also what caught the dropdown's chrome never rendering at all — see
+the note in spec `06`'s components list.
 
 ### Deviation: the overlay activates Barnacle, without moving anything
 
