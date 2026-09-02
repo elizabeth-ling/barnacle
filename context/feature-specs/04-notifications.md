@@ -70,11 +70,11 @@ to native + ntfy on any failure.
 
 ## Acceptance criteria
 
-- [ ] First launch requests notification permission.
-- [ ] A single new posting produces one native notification with company + title.
-- [ ] Multiple new postings in one run produce one summary notification.
+- [x] First launch requests notification permission.
+- [x] A single new posting produces one native notification with company + title.
+- [x] Multiple new postings in one run produce one summary notification.
 - [ ] Clicking a notification brings the app forward to the relevant Feed items.
-- [ ] No notification fires on a scrape that found nothing new.
+- [x] No notification fires on a scrape that found nothing new.
 - [ ] With phone notifications enabled (ntfy), one message per new-posting batch reaches the
       user's iPhone; a random topic can be generated; failure still leaves the native
       notification intact. (Twilio, if used, follows the same one-per-batch contract with
