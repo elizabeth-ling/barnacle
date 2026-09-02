@@ -53,7 +53,12 @@ struct AppliedView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScreenHeader(title: "Applied") {
-                AppliedSortToggle(selection: sortOrderBinding)
+                HStack(spacing: 6) {
+                    AppliedSortToggle(selection: sortOrderBinding)
+                    HeaderAddButton(help: "Log an application (\u{2318}J from anywhere)") {
+                        formModel = ApplicationFormModel()
+                    }
+                }
             }
 
             if !applications.isEmpty {
@@ -64,9 +69,6 @@ struct AppliedView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenBackground()
-        .floatingAddButton(help: "Log an application (\u{2318}J from anywhere)") {
-            formModel = ApplicationFormModel()
-        }
         .sheet(item: $formModel) { model in
             ApplicationFormSheet(model: model)
         }
@@ -82,13 +84,27 @@ struct AppliedView: View {
         }
     }
 
-    /// "12 applied · 3 interviewing" (spec `05`'s light touch). Statuses with nothing in them
-    /// are left out, so the line stays short once most applications land in one place.
+    /// "12 applied · 3 interviewing" (spec `05`'s light touch), each count in its own status
+    /// colour. Statuses with nothing in them are left out, so the line stays short once most
+    /// applications land in one place.
     private var statusCountsStrip: some View {
         HStack(spacing: 8) {
-            Text(statusCounts)
-                .font(Theme.Typography.metadata)
-                .foregroundStyle(Theme.Palette.textSecondary)
+            HStack(spacing: 6) {
+                ForEach(statusCounts, id: \.status) { entry in
+                    if entry.status != statusCounts.first?.status {
+                        Text("·")
+                            .font(Theme.Typography.metadata)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+
+                    HStack(spacing: 4) {
+                        StatusDot(status: entry.status)
+                        Text("\(entry.count) \(entry.status.displayName.lowercased())")
+                    }
+                    .font(Theme.Typography.metadata)
+                    .foregroundStyle(entry.status.color)
+                }
+            }
 
             Spacer(minLength: 8)
         }
@@ -98,14 +114,13 @@ struct AppliedView: View {
         .overlay(alignment: .bottom) { Hairline() }
     }
 
-    private var statusCounts: String {
-        ApplicationStatus.allCases
-            .compactMap { status in
-                let count = applications.filter { $0.status == status }.count
-                guard count > 0 else { return nil }
-                return "\(count) \(status.displayName.lowercased())"
-            }
-            .joined(separator: " \u{00B7} ")
+    /// Pipeline order (`allCases`), skipping the statuses nothing is in.
+    private var statusCounts: [(status: ApplicationStatus, count: Int)] {
+        ApplicationStatus.allCases.compactMap { status in
+            let count = applications.filter { $0.status == status }.count
+            guard count > 0 else { return nil }
+            return (status, count)
+        }
     }
 
     @ViewBuilder

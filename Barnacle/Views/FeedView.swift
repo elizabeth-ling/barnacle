@@ -76,6 +76,7 @@ struct FeedView: View {
                     )
                     FeedSortToggle(selection: sortOrderBinding)
                     FeedRefreshControl()
+                    HeaderAddButton(help: "Add a company") { isAddingCompany = true }
                 }
             }
 
@@ -93,7 +94,6 @@ struct FeedView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenBackground()
-        .floatingAddButton(help: "Add a company") { isAddingCompany = true }
         .sheet(isPresented: $isAddingCompany) {
             AddCompanyView()
         }
