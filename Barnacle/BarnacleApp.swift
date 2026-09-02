@@ -14,6 +14,10 @@ struct BarnacleApp: App {
     /// Consumes the coordinator's new-posting batches (spec `04`).
     @State private var notifications: NotificationService
 
+    /// Owns the global ⌘J hotkey and the floating panel behind it (spec `05`). On the app for
+    /// the same reason as the coordinator: it has to outlive every window.
+    @State private var overlay: QuickAddOverlay
+
     init() {
         let notifications = NotificationService()
         // Before the app finishes launching: a notification clicked while Barnacle is closed
@@ -25,8 +29,14 @@ struct BarnacleApp: App {
             notifications.notify(about: postings)
         }
 
+        // Registered here rather than from a view: ⌘J has to work with no window open, and a
+        // launch that restores to a closed window would never run a view's `.task`.
+        let overlay = QuickAddOverlay(container: BarnacleStore.shared)
+        overlay.start()
+
         _notifications = State(initialValue: notifications)
         _scrapeCoordinator = State(initialValue: scrapeCoordinator)
+        _overlay = State(initialValue: overlay)
     }
 
     var body: some Scene {
@@ -50,6 +60,7 @@ struct BarnacleApp: App {
         MenuBarExtra("Barnacle", systemImage: "shippingbox") {
             MenuBarContent()
                 .environment(scrapeCoordinator)
+                .environment(overlay)
         }
         .modelContainer(BarnacleStore.shared)
 
