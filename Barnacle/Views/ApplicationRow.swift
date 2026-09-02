@@ -20,7 +20,7 @@ struct ApplicationRow: View {
                 action: { isExpanded.toggle() }
             ) {
                 HStack(spacing: 6) {
-                    StatusMenu(selection: $application.status)
+                    StatusSelector(selection: $application.status)
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
@@ -104,47 +104,6 @@ struct ApplicationRow: View {
         }
     }
 
-}
-
-/// The row's inline status dropdown. Written by hand rather than as a `Picker` so it wears the
-/// design system's quiet-control chrome instead of a system pop-up button.
-private struct StatusMenu: View {
-    @Binding var selection: ApplicationStatus
-
-    @State private var isHovered = false
-
-    var body: some View {
-        Menu {
-            ForEach(ApplicationStatus.allCases, id: \.self) { status in
-                Button(status.displayName) { selection = status }
-            }
-        } label: {
-            HStack(spacing: 3) {
-                Text(selection.displayName)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-            }
-            .font(Theme.Typography.metadata)
-            .foregroundStyle(Theme.Palette.textSecondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(
-                isHovered ? Theme.Palette.surfaceAlt : Theme.Palette.surface,
-                in: RoundedRectangle(cornerRadius: Theme.Metrics.controlRadius, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Metrics.controlRadius, style: .continuous)
-                    .strokeBorder(Theme.Palette.hairline, lineWidth: 1)
-            }
-            .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .onHover { isHovered = $0 }
-        .animation(Theme.Metrics.hoverAnimation, value: isHovered)
-        .help("Change status")
-    }
 }
 
 #Preview("Application row") {

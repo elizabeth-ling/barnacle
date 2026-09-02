@@ -30,6 +30,25 @@ enum Theme {
         /// The one non-accent hue in the palette: spec `03` asks for a green check on a careers
         /// URL that validated. Muted to sit beside the warm greys rather than shout over them.
         static let success = Color(hex: 0x4E7A55)
+
+        /// One muted hue per `ApplicationStatus`, so the Applied tab reads at a glance. Each is
+        /// a text color plus the light fill it sits on, in the same relationship the accent has
+        /// with `accentTint`. Kept desaturated on purpose — the warm greys are still the page,
+        /// and these are pills inside it. `ApplicationStatus.color` / `.tint` map onto them.
+        enum Status {
+            static let applied = Color(hex: 0x4A6D8C)
+            static let appliedTint = Color(hex: 0xE7EEF4)
+            static let interviewing = Color(hex: 0xAD7A26)
+            static let interviewingTint = Color(hex: 0xF7EEDB)
+            /// Reuses the `success` green — an offer is the good ending.
+            static let offer = Color(hex: 0x4E7A55)
+            static let offerTint = Color(hex: 0xE3EDE4)
+            /// Deeper and redder than the accent, so a rejected pill can't be misread as one.
+            static let rejected = Color(hex: 0x9E4038)
+            static let rejectedTint = Color(hex: 0xF4E3E0)
+            static let ghosted = Color(hex: 0x87827A)
+            static let ghostedTint = Color(hex: 0xEEECE6)
+        }
     }
 
     /// Serif headings (New York, via `design: .serif`), SF Pro for body and UI. Sizes are

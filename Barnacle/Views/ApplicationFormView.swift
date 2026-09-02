@@ -126,13 +126,9 @@ struct ApplicationFormView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     FieldLabel("Status")
-                    Picker("", selection: $model.status) {
-                        ForEach(ApplicationStatus.allCases, id: \.self) { status in
-                            Text(status.displayName).tag(status)
-                        }
-                    }
-                    .labelsHidden()
-                    .font(Theme.Typography.body)
+                    // The same control the Applied row uses, so a status wears its colour
+                    // wherever it's set.
+                    StatusSelector(selection: $model.status)
                 }
             }
 
