@@ -41,6 +41,15 @@ final class JobPosting {
     /// is what clears its NEW badge (spec `02`). Optional, so it migrates in place.
     var viewedAt: Date?
 
+    /// When the user dismissed this posting from the feed (spec `02`). Nil for everything they
+    /// haven't ruled out, which is the ordinary feed.
+    ///
+    /// A dismissal hides the row; it never deletes it. Deleting would fight the scrape loop —
+    /// dedup is `(companyID, rawID)`, so the next run would re-insert the posting and notify
+    /// about it again. Independent of `closedAt`: the source reopening a posting must not undo
+    /// a decision the user made.
+    var dismissedAt: Date?
+
     init(
         id: UUID = UUID(),
         companyID: UUID,
@@ -52,7 +61,8 @@ final class JobPosting {
         location: String? = nil,
         rawID: String,
         closedAt: Date? = nil,
-        viewedAt: Date? = nil
+        viewedAt: Date? = nil,
+        dismissedAt: Date? = nil
     ) {
         self.id = id
         self.companyID = companyID
@@ -65,6 +75,7 @@ final class JobPosting {
         self.rawID = rawID
         self.closedAt = closedAt
         self.viewedAt = viewedAt
+        self.dismissedAt = dismissedAt
     }
 
     /// The date used for display and sorting everywhere in the app (§5).
@@ -86,6 +97,11 @@ final class JobPosting {
     /// unless the user already opened it, and then the badge must be gone.
     var isUnviewed: Bool {
         viewedAt == nil
+    }
+
+    /// True once the user has dismissed the posting, which is what keeps it out of the feed.
+    var isDismissed: Bool {
+        dismissedAt != nil
     }
 }
 

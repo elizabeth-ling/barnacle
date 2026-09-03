@@ -82,7 +82,7 @@ struct ManageCompaniesView: View {
     }
 
     private func row(for company: Company) -> some View {
-        CompactRow(title: company.name, metadata: metadata(for: company)) {
+        CompactRow(title: company.name, metadata: metadata(for: company)) { _ in
             HStack(spacing: 6) {
                 Button(company.isActive ? "Active" : "Paused") {
                     company.isActive.toggle()

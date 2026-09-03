@@ -18,7 +18,7 @@ struct ApplicationRow: View {
                 title: application.jobTitle,
                 metadata: metadata,
                 action: { isExpanded.toggle() }
-            ) {
+            ) { _ in
                 HStack(spacing: 6) {
                     StatusSelector(selection: $application.status)
 

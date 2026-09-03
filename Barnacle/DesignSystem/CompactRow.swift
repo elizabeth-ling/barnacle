@@ -8,7 +8,10 @@ struct CompactRow<Trailing: View>: View {
     var metadata: String?
     var isNew = false
     var action: (() -> Void)?
-    @ViewBuilder var trailing: () -> Trailing
+    /// The trailing detail, handed the row's hover state so a row can reveal a control only
+    /// while the pointer is on it — the Feed's dismiss button (spec `02`). Hover lives here
+    /// because a control that appears on its own hover could never be hovered in the first place.
+    @ViewBuilder var trailing: (Bool) -> Trailing
 
     @State private var isHovered = false
 
@@ -36,7 +39,7 @@ struct CompactRow<Trailing: View>: View {
 
             Spacer(minLength: 8)
 
-            trailing()
+            trailing(isHovered)
                 .font(Theme.Typography.metadata)
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .lineLimit(1)
@@ -55,7 +58,7 @@ struct CompactRow<Trailing: View>: View {
 
 extension CompactRow where Trailing == EmptyView {
     init(title: String, metadata: String? = nil, isNew: Bool = false, action: (() -> Void)? = nil) {
-        self.init(title: title, metadata: metadata, isNew: isNew, action: action) { EmptyView() }
+        self.init(title: title, metadata: metadata, isNew: isNew, action: action) { _ in EmptyView() }
     }
 }
 
@@ -65,11 +68,11 @@ extension CompactRow where Trailing == EmptyView {
             title: "Software Engineer Intern, Payments",
             metadata: "Stripe \u{00B7} Aug 29",
             isNew: true
-        ) {
+        ) { _ in
             Text("Seattle, WA")
         }
         Hairline()
-        CompactRow(title: "Data Science Intern", metadata: "Ramp \u{00B7} Aug 27") {
+        CompactRow(title: "Data Science Intern", metadata: "Ramp \u{00B7} Aug 27") { _ in
             Text("New York, NY")
         }
         Hairline()

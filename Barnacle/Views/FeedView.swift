@@ -25,6 +25,15 @@ struct FeedView: View {
     /// Not persisted: the spec only asks for the sort choice to survive a restart.
     @State private var companyFilter: UUID?
 
+    /// Swaps the list between the ordinary feed and the postings the user has dismissed.
+    /// Deliberately not persisted — the feed should always open as the feed, never leave the
+    /// user parked in a view of things they have already ruled out.
+    @State private var showDismissed = false
+
+    /// The posting the undo banner is offering to put back. Cleared on a timer, or as soon as
+    /// the user acts.
+    @State private var undoTarget: JobPosting?
+
     @State private var isAddingCompany = false
     @State private var isManagingCompanies = false
 
@@ -49,9 +58,16 @@ struct FeedView: View {
         return companyFilter
     }
 
+    private var dismissedCount: Int {
+        postings.lazy.filter(\.isDismissed).count
+    }
+
     private var visiblePostings: [JobPosting] {
         postings
             .filter { posting in
+                // Dismissal outranks everything else: the two lists never mix, and a reveal
+                // can't drag a dismissed posting back into the feed.
+                guard posting.isDismissed == showDismissed else { return false }
                 // A notification reveal replaces the company filter rather than combining with
                 // it — the point is to show that exact batch, whatever companies it spans.
                 if let revealedPostingIDs { return revealedPostingIDs.contains(posting.id) }
@@ -74,6 +90,13 @@ struct FeedView: View {
                         selection: $companyFilter,
                         onManageCompanies: { isManagingCompanies = true }
                     )
+                    if dismissedCount > 0 {
+                        Button("Dismissed (\(dismissedCount))") {
+                            showDismissed.toggle()
+                        }
+                        .buttonStyle(.quietControl(isActive: showDismissed))
+                        .help(showDismissed ? "Back to the feed" : "Show dismissed postings")
+                    }
                     FeedSortToggle(selection: sortOrderBinding)
                     FeedRefreshControl()
                     HeaderAddButton(help: "Add a company") { isAddingCompany = true }
@@ -88,6 +111,10 @@ struct FeedView: View {
 
             if revealedPostingIDs != nil {
                 revealBanner
+            }
+
+            if let undoTarget {
+                undoBanner(for: undoTarget)
             }
 
             content
@@ -108,6 +135,25 @@ struct FeedView: View {
         // The reveal overrides the company filter, so touching the filter has to dismiss it —
         // otherwise picking a company would silently do nothing.
         .onChange(of: companyFilter) { _, _ in revealedPostingIDs = nil }
+        // Switching lists is its own act of navigation: a reveal narrowed to one notification's
+        // batch would otherwise still be filtering the dismissed list.
+        .onChange(of: showDismissed) { _, _ in
+            revealedPostingIDs = nil
+            undoTarget = nil
+        }
+        // Restoring the last dismissed posting empties this list and takes its control off the
+        // header, so put the user back on the feed rather than in a dead end.
+        .onChange(of: dismissedCount) { _, count in
+            if count == 0 { showDismissed = false }
+        }
+        // The undo offer is transient — six seconds is long enough to catch a misclick, and the
+        // Dismissed view is the durable way back after that.
+        .task(id: undoTarget?.id) {
+            guard let target = undoTarget else { return }
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled, undoTarget?.id == target.id else { return }
+            undoTarget = nil
+        }
     }
 
     /// Says why the feed is showing a subset, and gets the user back out of it.
@@ -134,6 +180,27 @@ struct FeedView: View {
     private var revealBannerText: String {
         let count = visiblePostings.count
         return count == 1 ? "Showing 1 new internship" : "Showing \(count) new internships"
+    }
+
+    /// The one chance to take a dismissal back without going looking for it.
+    private func undoBanner(for posting: JobPosting) -> some View {
+        HStack(spacing: 8) {
+            Text("Dismissed \u{201C}\(posting.title)\u{201D}")
+                .font(Theme.Typography.metadata)
+                .foregroundStyle(Theme.Palette.textSecondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            Button("Undo") {
+                setDismissed(false, on: posting)
+            }
+            .buttonStyle(.quietControl())
+        }
+        .padding(.horizontal, Theme.Metrics.screenPadding)
+        .padding(.vertical, 6)
+        .background(Theme.Palette.surfaceAlt)
+        .overlay(alignment: .bottom) { Hairline() }
     }
 
     @ViewBuilder
@@ -166,6 +233,26 @@ struct FeedView: View {
                 .buttonStyle(.barnacleSecondary)
                 .disabled(scrapeCoordinator.isScraping)
             }
+        } else if showDismissed && visiblePostings.isEmpty {
+            EmptyState(
+                title: "Nothing dismissed here",
+                message: "Dismissed postings from other companies are still listed under \u{201C}All companies.\u{201D}",
+                systemImage: "eye.slash"
+            ) {
+                Button("Back to the feed") { showDismissed = false }
+                    .buttonStyle(.barnacleSecondary)
+            }
+        } else if visiblePostings.isEmpty && activeCompanyFilter == nil && revealedPostingIDs == nil {
+            // Everything stored has been dismissed. Without this branch the feed would claim
+            // nothing came from a company the user never filtered to.
+            EmptyState(
+                title: "You\u{2019}ve dismissed everything",
+                message: "New postings will show up here as they\u{2019}re found.",
+                systemImage: "checkmark.circle"
+            ) {
+                Button("Show dismissed") { showDismissed = true }
+                    .buttonStyle(.barnacleSecondary)
+            }
         } else if visiblePostings.isEmpty {
             EmptyState(
                 title: revealedPostingIDs == nil ? "Nothing from this company yet" : "Those postings are gone",
@@ -184,7 +271,11 @@ struct FeedView: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(visiblePostings) { posting in
-                        PostingRow(posting: posting) { open(posting) }
+                        PostingRow(
+                            posting: posting,
+                            onOpen: { open(posting) },
+                            onSetDismissed: { setDismissed($0, on: posting) }
+                        )
                         Hairline()
                     }
                 }
@@ -218,6 +309,16 @@ struct FeedView: View {
         if posting.viewedAt == nil {
             posting.viewedAt = Date()
         }
+    }
+
+    /// Dismisses a posting or puts it back. Never deletes: the scrape loop would re-insert a
+    /// deleted posting on its next run, and notify about it as if it were new (see
+    /// `JobPosting.dismissedAt`).
+    private func setDismissed(_ isDismissed: Bool, on posting: JobPosting) {
+        posting.dismissedAt = isDismissed ? Date() : nil
+        // Only a dismissal made from the feed is undoable inline; restoring already put the
+        // row back where the user can see it.
+        undoTarget = isDismissed ? posting : nil
     }
 }
 
