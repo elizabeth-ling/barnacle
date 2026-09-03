@@ -59,6 +59,27 @@ Keep rows compact and tidy (Postman-like density, tiny fonts — see spec `06`).
 - **`+` button (end of the controls row):** opens the Add-Company modal (spec `03`).
   *Moved there from a floating bottom-right circle on 2026-09-02; see spec `06`.*
 
+## Dismissing a posting
+
+*Added 2026-09-02 at the user's request.* Postings the user has ruled out — wrong location,
+wrong team, already applied — should leave the feed without waiting for the source to close
+them.
+
+- **Dismiss:** an `×` at the row's trailing edge, present only while the row is hovered, plus
+  a right-click → **Dismiss**. Stored as `JobPosting.dismissedAt`; the posting is *never*
+  deleted, because dedup is `(companyID, rawID)` and the next scrape would re-insert it and
+  notify about it as if it were new. A dismissal therefore survives re-scrapes, and is
+  independent of `closedAt` — a posting reopening at the source must not undo the user's call.
+- **Undo:** a banner under the controls row names the posting just dismissed and offers
+  **Undo** for six seconds. After that the Dismissed view is the way back.
+- **Dismissed view:** a quiet **Dismissed (n)** control sits with the filter and sort controls
+  whenever anything is dismissed, and swaps the list for those postings. Each row's trailing
+  control becomes a restore arrow (right-click offers **Restore to Feed**). Restoring the last
+  one returns the user to the feed. The view is not persisted across launches — the Feed
+  always opens as the feed.
+- Dismissed postings never mix with the feed: they are excluded from the ordinary list, from a
+  company filter, and from a notification reveal.
+
 ## Empty & loading states
 
 - No companies yet → friendly empty state pointing at the `+` button ("Add a company to
@@ -66,6 +87,10 @@ Keep rows compact and tidy (Postman-like density, tiny fonts — see spec `06`).
 - Companies added but no postings yet → "No internships found yet. We check every 15
   minutes." + Refresh button.
 - First scrape in progress → lightweight skeleton or spinner, not a blocking modal.
+- Everything dismissed → "You've dismissed everything" + a **Show dismissed** button, rather
+  than the filter-shaped empty state, which would blame a company filter the user never set.
+- Dismissed view with nothing in it for the current filter → "Nothing dismissed here" + a
+  **Back to the feed** button.
 
 ## Behavior details
 
@@ -81,3 +106,9 @@ Keep rows compact and tidy (Postman-like density, tiny fonts — see spec `06`).
 - [x] Sort toggle flips order and the choice survives an app restart.
 - [x] The `+` button opens the Add-Company modal.
 - [x] New postings from a background scrape appear without user action.
+- [x] The `×` dismisses a posting: it leaves the feed, is not deleted, and stays gone after a
+      re-scrape and an app restart.
+- [ ] Undo restores the posting just dismissed. *(Banner renders correctly; the button itself
+      has not been clicked.)*
+- [ ] The Dismissed view lists dismissed postings and restores them individually. *(The
+      **Dismissed (n)** control renders with the right count; the view has not been opened.)*

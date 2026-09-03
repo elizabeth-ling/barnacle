@@ -83,6 +83,12 @@ These live in `Theme.Palette.Status`; `ApplicationStatus.color` / `.tint` map on
   ~20pt margins. Putting it beside the filter, sort, and refresh controls keeps every control
   on a screen in one place instead of at opposite corners. `FloatingAddButton` is still in
   the design system, now unused.*
+- **Row hover actions:** a control that only makes sense on the row being pointed at — the
+  Feed's dismiss `×` — lives in the trailing slot and is in the layout *only* while the row
+  is hovered, so the metadata slides over to make room on the standard hover animation.
+  `CompactRow` hands its hover state to the trailing builder for exactly this. A permanently
+  reserved slot was tried first and rejected: it left a visible gap between the date and the
+  row edge on every idle row. *(Added 2026-09-02 with the dismiss feature.)*
 - **Buttons:** primary = `accent` fill + white text; secondary = surface + hairline border +
   primary text. Small corner radius (~6–8pt).
 - **Modal / overlay surface:** `bg/surface`, ~12pt radius, soft shadow, serif title, tidy
@@ -108,6 +114,7 @@ These live in `Theme.Palette.Status`; `ApplicationStatus.color` / `.tint` map on
 - [x] Palette matches the tokens above; the only accent is Claude orange.
 - [x] Feed rows are compact with clear title / metadata hierarchy and a subtle hover.
 - [x] The `+` button is an orange control at the end of the screen header's control row.
+- [x] A row's hover-only action appears on the hovered row alone and reserves no space at rest.
       *(Was "a floating orange circle, bottom-right" until 2026-09-02.)*
 - [x] Each `ApplicationStatus` has its own muted colour, used everywhere status is shown.
 - [x] Modal and overlay use the warm surface, serif title, and tiny-font fields.
