@@ -4,8 +4,11 @@ import SwiftData
 /// The lightweight company management the spec asks for (spec `03`, "Managing companies"):
 /// see what's tracked, pause a company so the scrape loop skips it, or remove one.
 ///
-/// Deliberately not a CRUD screen — there's no editing here. Reached from the Feed's company
-/// filter, which is where tracked companies are already visible.
+/// Editing a company's URL landed with spec `08`: a wrong URL used to mean remove and re-add,
+/// which is how two companies ended up saved against boards that 404. It reuses the add-company
+/// modal, so the field, the checker, and detection are all the same ones.
+///
+/// Reached from the Feed's company filter, which is where tracked companies are already visible.
 struct ManageCompaniesView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -17,6 +20,7 @@ struct ManageCompaniesView: View {
     @Query private var postings: [JobPosting]
 
     @State private var pendingRemoval: Company?
+    @State private var editingCompany: Company?
 
     private var isRemoving: Binding<Bool> {
         Binding(
@@ -79,11 +83,23 @@ struct ManageCompaniesView: View {
         } message: { company in
             Text("Barnacle stops checking \(company.name). Its stored postings can stay in the feed.")
         }
+        .sheet(item: $editingCompany) { company in
+            AddCompanyView(company: company)
+        }
     }
 
     private func row(for company: Company) -> some View {
         CompactRow(title: company.name, metadata: metadata(for: company)) { _ in
             HStack(spacing: 6) {
+                Button {
+                    editingCompany = company
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .buttonStyle(.quietControl())
+                .help("Edit this company\u{2019}s careers URL")
+
                 Button(company.isActive ? "Active" : "Paused") {
                     company.isActive.toggle()
                 }

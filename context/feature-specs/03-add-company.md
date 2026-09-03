@@ -58,6 +58,8 @@ classification per URL would mean a schema change; nothing needed it yet.
 
 Not a full CRUD screen — keep it simple:
 - The company filter dropdown (spec `02`) is where tracked companies are visible.
+- Editing a URL landed later, with spec `08` — the pencil in `ManageCompaniesView` reopens this
+  same modal on an existing company. Until then a wrong URL meant remove and re-add.
 - Provide a way to **remove** a company and to **toggle active/inactive** — e.g. a small
   "Manage companies" list reachable from Settings or a right-click on the filter entry.
   Removing a company should offer to keep or discard its stored postings (default: keep).

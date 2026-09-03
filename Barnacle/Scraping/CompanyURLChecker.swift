@@ -89,15 +89,7 @@ enum CompanyURLChecker {
             // `ScrapeRunner` (spec `07`), so apply the same rule here — a count of every job at
             // the company would tell the user nothing about what they'd actually see.
             let jobs = try await adapter.fetchInternships(for: snapshot)
-            let matching = jobs.filter { job in
-                guard filter.admits(title: job.title) else { return false }
-                let location = LocationClassifier.classify(
-                    job.location,
-                    structuredCountries: job.structuredCountries,
-                    isRemote: job.isRemote
-                )
-                return filter.admits(location)
-            }
+            let matching = jobs.filter { filter.admits($0) }
             return .reachable(detection: detection, internships: matching.count)
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

@@ -74,14 +74,34 @@ Add **Edit URL** to `ManageCompaniesView`: the same field and the same checker, 
 detection on save. With the probe in place, the natural repair for a bad URL is to re-probe the
 name.
 
+## As built
+
+Three decisions worth recording, all consistent with the spec rather than departures from it:
+
+- **One row per ATS.** Both slug variants can answer on the same board (`scaleai` *and*
+  `scale-ai`), and offering the same company twice under the same ATS is a choice with no
+  meaning. `CompanyProbe` keeps the richer hit per ATS, breaking ties towards the first slug
+  tried, and sorts the survivors by role count.
+- **The short timeout is a deadline around the adapter, not a request timeout.** The probe reuses
+  the real adapters so the count comes from the same mapping the scraper uses, and an adapter
+  fixes its own request at the scrape budget. `withDeadline` caps the whole parallel probe at 15s
+  — the same budget detection already gives a blocking modal — and cancels what's left.
+- **Selecting a board fills the URL field.** That is what makes "the chosen result flows through
+  the existing `CompanyURLChecker`" literally true: after a pick, Add is the same code path as a
+  pasted URL, and the user can see and edit exactly what's about to be saved.
+
+**Edit URL reuses the Add-Company modal** (`AddCompanyView(company:)`) rather than growing a
+second form: same fields, same checker, same detection, and the name probe comes along for free —
+which is the spec's own suggested repair for a bad URL.
+
 ## Acceptance criteria
 
 - [ ] Typing "Stripe" in the Add-Company modal finds its Greenhouse board without a URL.
 - [ ] "Ramp" and "Notion" resolve to Ashby; "Scale AI" slugifies to `scaleai` and resolves.
 - [ ] A name matching several boards lists all of them with role counts and requires a choice.
 - [ ] A name matching nothing falls through to the URL field with a clear message.
-- [ ] Role counts reflect the user's spec-`07` settings, not the board's total.
+- [x] Role counts reflect the user's spec-`07` settings, not the board's total.
 - [ ] Probing is parallel and uses the short detection timeout; the modal never hangs.
-- [ ] The chosen result flows through the existing `CompanyURLChecker` outcomes.
+- [x] The chosen result flows through the existing `CompanyURLChecker` outcomes.
 - [ ] `ManageCompaniesView` can edit a company's URL and re-run detection.
-- [ ] `xcodebuild -scheme Barnacle -configuration Debug build` succeeds with no new warnings.
+- [x] `xcodebuild -scheme Barnacle -configuration Debug build` succeeds with no new warnings.

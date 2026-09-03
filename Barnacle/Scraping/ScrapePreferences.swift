@@ -41,6 +41,23 @@ struct ScrapeFilter: Sendable, Equatable {
         RoleLevelFilter.matches(title: title, level: roleLevel)
     }
 
+    /// Whether a scraped posting would be stored under these settings — the title rule and the
+    /// location rule together.
+    ///
+    /// `ScrapeRunner` applies the two separately because it also stores what the classifier
+    /// worked out. Everything that only needs a count — the Add-Company check (spec `03`) and
+    /// the name probe (spec `08`) — asks here, so "N matching roles" is the number the user
+    /// would actually receive rather than the board's headcount.
+    func admits(_ job: ScrapedJob) -> Bool {
+        guard admits(title: job.title) else { return false }
+        let location = LocationClassifier.classify(
+            job.location,
+            structuredCountries: job.structuredCountries,
+            isRemote: job.isRemote
+        )
+        return admits(location)
+    }
+
     /// **Reject only on a confident non-match.** A posting is dropped only if every part of its
     /// location resolved *and* none of them is a country the user watches. Anything unknown is
     /// kept, because at scrape time a misclassification isn't a filter you can flip off — the

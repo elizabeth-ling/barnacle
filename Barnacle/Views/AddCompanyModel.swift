@@ -20,16 +20,43 @@ final class AddCompanyModel {
         var isChecking = false
     }
 
-    var name = ""
+    /// What probing the typed name turned up (spec `08`).
+    enum BoardSearch: Equatable {
+        case idle
+        case searching
+        case found([CompanyBoard])
+        /// Probed, nothing answered. The URL field is the fallback, never a dead end.
+        case notFound
+    }
+
+    /// Editing the name invalidates any boards found for the old one — they'd otherwise sit
+    /// there describing a company the user has stopped typing.
+    var name = "" {
+        didSet {
+            guard name != oldValue else { return }
+            search = .idle
+            selectedBoardID = nil
+            awaitingConfirmation = false
+            formError = nil
+        }
+    }
+
     var urlFields: [URLField] = [URLField()]
 
-    /// The single message under the fields: what's missing, or the spec's "save anyway" prompt.
+    /// The single message under the fields: what's missing, the spec's "save anyway" prompt, or
+    /// the fall-through to the URL field when no board answered.
     private(set) var formError: String?
     private(set) var isChecking = false
+
+    private(set) var search: BoardSearch = .idle
+    private(set) var selectedBoardID: String?
 
     /// Set once a check leaves something unconfirmed. The primary button becomes "Save anyway",
     /// which is the spec's escape hatch — the user is told what they're saving before they do.
     private(set) var awaitingConfirmation = false
+
+    /// Guards `load(from:)` so a repeat `onAppear` can't overwrite what the user has typed.
+    private var isLoaded = false
 
     var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -39,12 +66,47 @@ final class AddCompanyModel {
         urlFields.indices.filter { !urlFields[$0].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
+    var hasEnteredURL: Bool {
+        !enteredFieldIndices.isEmpty
+    }
+
+    var isSearching: Bool {
+        search == .searching
+    }
+
+    /// What the primary button (and `Return`) does next. A name with no URL yet means the user
+    /// wants the board found for them, which is the whole point of spec `08`.
+    enum SubmitAction {
+        case findBoards
+        case chooseBoard
+        case check
+        case saveAnyway
+    }
+
+    var submitAction: SubmitAction {
+        if awaitingConfirmation { return .saveAnyway }
+        if hasEnteredURL { return .check }
+        if case .found(let boards) = search, !boards.isEmpty { return .chooseBoard }
+        return .findBoards
+    }
+
     var canSubmit: Bool {
-        !isChecking && !trimmedName.isEmpty && !enteredFieldIndices.isEmpty
+        !isChecking && !isSearching && !trimmedName.isEmpty
     }
 
     var primaryButtonTitle: String {
-        awaitingConfirmation ? "Save anyway" : "Add"
+        switch submitAction {
+        case .findBoards: "Find board"
+        case .chooseBoard, .check: "Add"
+        case .saveAnyway: "Save anyway"
+        }
+    }
+
+    /// Whether the message under the fields is guidance rather than a blocked action — the
+    /// "save anyway" prompt and the no-board fall-through both are, so they don't wear the
+    /// accent that spec `06` reserves for something needing attention.
+    var formErrorIsAdvisory: Bool {
+        awaitingConfirmation || search == .notFound
     }
 
     // MARK: - Editing
@@ -61,6 +123,9 @@ final class AddCompanyModel {
                 self.urlFields[index].outcome = nil
                 self.awaitingConfirmation = false
                 self.formError = nil
+                // Typing over a probed URL leaves the checked row selected, which would be the
+                // same lie as a stale green check. The results stay up so it can be re-picked.
+                self.selectedBoardID = nil
             }
         )
     }
@@ -78,6 +143,58 @@ final class AddCompanyModel {
         formError = nil
     }
 
+    // MARK: - Finding a board by name (spec `08`)
+
+    /// Probes the ATSes for the typed name and shows what answered.
+    ///
+    /// One hit is pre-selected so `Return` adds it; several are left unselected because
+    /// `vercel` genuinely answers on two boards and guessing would be wrong about as often as
+    /// it's right. Nothing found falls through to the URL field with a message.
+    func findBoards() async {
+        guard canSubmit else {
+            formError = "Give the company a name."
+            return
+        }
+
+        search = .searching
+        formError = nil
+        selectedBoardID = nil
+
+        let boards = await CompanyProbe.probe(name: trimmedName)
+
+        guard !boards.isEmpty else {
+            search = .notFound
+            formError = "Couldn\u{2019}t find a job board for that name. Paste the careers URL instead."
+            return
+        }
+
+        search = .found(boards)
+        if boards.count == 1 {
+            select(boards[0])
+        }
+    }
+
+    /// Selecting a board fills the first URL field with it, so the chosen result goes through
+    /// the same `CompanyURLChecker` path as a pasted URL (spec `08`, "Reuse, don't rebuild")
+    /// and the user can see — and edit — exactly what's about to be saved.
+    func select(_ board: CompanyBoard) {
+        selectedBoardID = board.id
+        awaitingConfirmation = false
+        formError = nil
+
+        if urlFields.isEmpty {
+            urlFields = [URLField(text: board.boardURL)]
+        } else {
+            urlFields[0].text = board.boardURL
+            urlFields[0].outcome = nil
+        }
+    }
+
+    /// Several boards answered and none is picked: the spec requires the choice.
+    func reportBoardChoiceNeeded() {
+        formError = "Pick which board to track."
+    }
+
     // MARK: - Checking
 
     /// Runs detection + the one-shot test fetch for every entered URL.
@@ -89,9 +206,11 @@ final class AddCompanyModel {
         // queued before either suspends. Both run on the main actor, so this drops the second.
         guard !isChecking else { return false }
         guard canSubmit else {
-            formError = trimmedName.isEmpty
-                ? "Give the company a name."
-                : "Add at least one careers URL."
+            formError = "Give the company a name."
+            return false
+        }
+        guard hasEnteredURL else {
+            formError = "Add at least one careers URL."
             return false
         }
 
@@ -163,6 +282,30 @@ final class AddCompanyModel {
     func reportSaveFailure(_ error: Error) {
         awaitingConfirmation = false
         formError = "Couldn\u{2019}t save this company: \(error.localizedDescription)"
+    }
+
+    /// Fills the form from a company already being tracked, for the edit path (spec `08`).
+    func load(from company: Company) {
+        guard !isLoaded else { return }
+        isLoaded = true
+
+        name = company.name
+        let fields = company.careerURLs.map { URLField(text: $0) }
+        urlFields = fields.isEmpty ? [URLField()] : fields
+    }
+
+    /// Writes the checked URLs back onto a company that's already tracked (spec `08`, "Fixing a
+    /// wrong URL"). Detection re-ran as part of the check, so a repaired URL updates the ATS
+    /// and token with it. Returns false when there's nothing safe to save.
+    func apply(to company: Company) -> Bool {
+        let detections = savableDetections
+        guard !trimmedName.isEmpty, let primary = detections.first else { return false }
+
+        company.name = trimmedName
+        company.careerURLs = detections.map(\.normalizedURL)
+        company.atsType = primary.atsType
+        company.atsToken = primary.atsToken
+        return true
     }
 
     /// Builds the company to insert, or nil if there's nothing safe to save.
