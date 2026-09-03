@@ -9,6 +9,7 @@ struct FeedView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
     @Environment(NotificationService.self) private var notifications
+    @Environment(ScrapePreferences.self) private var scrapePreferences
 
     /// `effectiveDate` is computed, so SwiftData can't sort on it — this query gives a stable
     /// order and `visiblePostings` does the real sort in memory. The list is small (one user's
@@ -56,6 +57,22 @@ struct FeedView: View {
     private var activeCompanyFilter: UUID? {
         guard let companyFilter, companies.contains(where: { $0.id == companyFilter }) else { return nil }
         return companyFilter
+    }
+
+    /// True once a run has actually finished, which is what makes "nothing matched" meaningful
+    /// rather than premature.
+    private var hasCompletedScrape: Bool {
+        scrapeCoordinator.lastRun != nil && !scrapeCoordinator.isScraping
+    }
+
+    /// The settings, in a sentence: "Barnacle is only keeping internships in Canada, United
+    /// States."
+    private var settingsSummary: String {
+        let roles = scrapePreferences.roleLevel == .internship ? "internships" : "new-grad roles"
+        guard !scrapePreferences.countries.isEmpty else {
+            return "Barnacle is keeping \(roles) from anywhere."
+        }
+        return "Barnacle is only keeping \(roles) in \(CountryCatalog.names(for: scrapePreferences.countries))."
     }
 
     private var dismissedCount: Int {
@@ -222,16 +239,32 @@ struct FeedView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if postings.isEmpty {
+            // Once a scrape has finished and still found nothing, the settings are the likeliest
+            // reason — so say what they are here, where the information is useful, rather than
+            // carrying a permanent "N hidden" counter in the header (spec `07`).
             EmptyState(
-                title: "No internships found yet",
-                message: "We check every 15 minutes.",
+                title: scrapePreferences.roleLevel == .internship
+                    ? "No internships found yet"
+                    : "No new-grad roles found yet",
+                message: hasCompletedScrape
+                    ? "\(settingsSummary) We check every 15 minutes."
+                    : "We check every 15 minutes.",
                 systemImage: "clock"
             ) {
-                Button("Refresh now") {
-                    Task { await scrapeCoordinator.refreshNow() }
+                HStack(spacing: 8) {
+                    Button("Refresh now") {
+                        Task { await scrapeCoordinator.refreshNow() }
+                    }
+                    .buttonStyle(.barnacleSecondary)
+                    .disabled(scrapeCoordinator.isScraping)
+
+                    if hasCompletedScrape {
+                        SettingsLink {
+                            Text("Change what to look for")
+                        }
+                        .buttonStyle(.barnacleSecondary)
+                    }
                 }
-                .buttonStyle(.barnacleSecondary)
-                .disabled(scrapeCoordinator.isScraping)
             }
         } else if showDismissed && visiblePostings.isEmpty {
             EmptyState(
@@ -332,4 +365,5 @@ enum FeedLog {
         .modelContainer(BarnacleStore.makeContainer(inMemory: true))
         .environment(ScrapeCoordinator(container: BarnacleStore.makeContainer(inMemory: true)))
         .environment(NotificationService())
+        .environment(ScrapePreferences())
 }

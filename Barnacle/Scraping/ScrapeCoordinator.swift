@@ -18,11 +18,20 @@ final class ScrapeCoordinator {
     @ObservationIgnored var onNewPostings: (([NewPosting]) -> Void)?
 
     @ObservationIgnored private let runner: ScrapeRunner
+
+    /// What to keep (spec `07`). Read fresh at the top of every run, so a settings change takes
+    /// effect on the next scrape without a restart.
+    @ObservationIgnored let preferences: ScrapePreferences
+
     @ObservationIgnored private var scheduleTask: Task<Void, Never>?
     @ObservationIgnored private var hasStarted = false
 
-    init(container: ModelContainer) {
+    /// - Parameter preferences: the app passes the one instance Settings also edits. Nil builds
+    ///   a fresh reader of the same defaults, which is what previews want — a default argument
+    ///   can't do it, since those are evaluated off the main actor.
+    init(container: ModelContainer, preferences: ScrapePreferences? = nil) {
         runner = ScrapeRunner(modelContainer: container)
+        self.preferences = preferences ?? ScrapePreferences()
     }
 
     /// Scrapes now and starts the repeating schedule. Idempotent — the main window's
@@ -31,7 +40,10 @@ final class ScrapeCoordinator {
         guard !hasStarted else { return }
         hasStarted = true
 
-        Task { await refreshNow() }
+        Task {
+            await backfillRegionsIfNeeded()
+            await refreshNow()
+        }
 
         scheduleTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -58,11 +70,25 @@ final class ScrapeCoordinator {
         isScraping = true
         defer { isScraping = false }
 
-        let run = await runner.scrapeAll()
+        let run = await runner.scrapeAll(filter: preferences.filter)
         lastRun = run
 
         if !run.newPostings.isEmpty {
             onNewPostings?(run.newPostings)
+        }
+    }
+}
+
+/// Classifies the postings stored before spec `07` shipped, once (§`07`, "Backfill"). The flag
+/// lives in `UserDefaults` alongside the settings themselves; `bool(forKey:)` is right here,
+/// because an unset key genuinely means "not yet backfilled."
+private extension ScrapeCoordinator {
+    func backfillRegionsIfNeeded() async {
+        guard !preferences.didBackfillRegions else { return }
+        let stamped = await runner.backfillRegions()
+        preferences.didBackfillRegions = true
+        if stamped > 0 {
+            ScrapeLog.logger.info("Backfilled country codes for \(stamped, privacy: .public) postings")
         }
     }
 }

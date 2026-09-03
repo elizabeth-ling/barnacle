@@ -1,10 +1,11 @@
 import Foundation
 import SwiftData
 
-/// An internship posting scraped from a company's careers source.
+/// A posting scraped from a company's careers source.
 ///
-/// Only postings that pass `InternshipFilter` are ever stored — adapters filter before
-/// returning, so non-internship roles never reach the database (§6).
+/// Only postings that pass the user's settings are ever stored — `ScrapeRunner` applies
+/// `RoleLevelFilter` and `LocationClassifier` before inserting (spec `07`), so a role the user
+/// isn't looking for, or one in a country they aren't watching, never reaches the database.
 @Model
 final class JobPosting {
     var id: UUID = UUID()
@@ -29,6 +30,18 @@ final class JobPosting {
     var dateFirstSeen: Date = Date()
 
     var location: String?
+
+    /// The country `LocationClassifier` resolved for this posting, ISO 3166-1 alpha-2 (spec
+    /// `07`). Nil means the location didn't resolve — unknown, not "nowhere" — which is why the
+    /// row still shows the raw `location` string for the user to judge.
+    var countryCode: String?
+
+    /// Whether the source called this posting remote. Defaults false.
+    var isRemote: Bool = false
+
+    /// The `RoleLevel` that admitted this posting, as its raw value. Informational: the purge
+    /// re-reads the title rather than trusting this, so a keyword-list change can't strand a row.
+    var roleLevel: String?
 
     /// The ATS's own job id. Half of the dedup key — see `isDuplicate(of:)`.
     var rawID: String = ""
@@ -59,6 +72,9 @@ final class JobPosting {
         datePosted: Date? = nil,
         dateFirstSeen: Date = Date(),
         location: String? = nil,
+        countryCode: String? = nil,
+        isRemote: Bool = false,
+        roleLevel: String? = nil,
         rawID: String,
         closedAt: Date? = nil,
         viewedAt: Date? = nil,
@@ -72,6 +88,9 @@ final class JobPosting {
         self.datePosted = datePosted
         self.dateFirstSeen = dateFirstSeen
         self.location = location
+        self.countryCode = countryCode
+        self.isRemote = isRemote
+        self.roleLevel = roleLevel
         self.rawID = rawID
         self.closedAt = closedAt
         self.viewedAt = viewedAt

@@ -1,18 +1,45 @@
 import SwiftUI
+import SwiftData
 import AppKit
 import UserNotifications
 
-/// Notification preferences (spec `04`): the native on/off switch, and the optional ntfy push
-/// that reaches the user's iPhone when they're away from the Mac.
+/// The app's settings: what to look for (spec `07`) over the notification switches (spec `04`)
+/// — the native on/off toggle and the optional ntfy push that reaches the user's iPhone.
 struct SettingsView: View {
     @Environment(NotificationService.self) private var notifications
+    @Environment(ScrapePreferences.self) private var scrapePreferences
+    @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
+    @Environment(\.modelContext) private var modelContext
+
+    /// Every posting, counted in memory — the same one-user scale that lets the Feed sort in
+    /// memory, and the purge dialog has to state a count before anything is deleted.
+    @Query private var postings: [JobPosting]
 
     @State private var testState = PhoneTestState.idle
+
+    /// A settings change that would delete postings, held until the user confirms it.
+    @State private var pendingPurge: PendingPurge?
+
+    private var isConfirmingPurge: Binding<Bool> {
+        Binding(
+            get: { pendingPurge != nil },
+            set: { if !$0 { pendingPurge = nil } }
+        )
+    }
 
     var body: some View {
         @Bindable var preferences = notifications.preferences
 
         VStack(alignment: .leading, spacing: Theme.Metrics.fieldSpacing) {
+            ScrapeSettingsSection(
+                preferences: scrapePreferences,
+                onSelectRoleLevel: requestRoleLevel,
+                onSelectCountries: requestCountries
+            )
+
+            Hairline()
+                .padding(.vertical, 2)
+
             Text("Notifications")
                 .font(Theme.Typography.sectionTitle)
                 .foregroundStyle(Theme.Palette.textPrimary)
@@ -43,6 +70,19 @@ struct SettingsView: View {
         .screenBackground()
         .preferredColorScheme(.light)
         .task { await notifications.refreshAuthorizationStatus() }
+        // The one destructive action in the app, so it always states the count first.
+        .confirmationDialog(
+            pendingPurge?.title ?? "Remove postings?",
+            isPresented: isConfirmingPurge,
+            presenting: pendingPurge
+        ) { purge in
+            Button(purge.count == 1 ? "Remove 1 posting" : "Remove \(purge.count) postings", role: .destructive) {
+                apply(purge.change)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { purge in
+            Text(purge.message)
+        }
     }
 
     /// The toggle above is a lie while macOS is blocking Barnacle, so say so and offer the fix.
@@ -161,6 +201,83 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - What to look for (spec `07`)
+
+    /// A change the user asked for, and what applying it would cost.
+    private struct PendingPurge: Identifiable {
+        let id = UUID()
+        let change: Change
+        let count: Int
+        let title: String
+        let message: String
+    }
+
+    private enum Change {
+        case roleLevel(RoleLevel)
+        case countries(Set<String>)
+    }
+
+    private func requestRoleLevel(_ level: RoleLevel) {
+        guard level != scrapePreferences.roleLevel else { return }
+
+        var proposed = scrapePreferences.filter
+        proposed.roleLevel = level
+        let doomed = PostingPurge.unmatched(postings, under: proposed).count
+        guard doomed > 0 else {
+            apply(.roleLevel(level))
+            return
+        }
+
+        let noun = scrapePreferences.roleLevel.postingNoun
+        let destination = level.displayName.lowercased()
+        pendingPurge = PendingPurge(
+            change: .roleLevel(level),
+            count: doomed,
+            title: "Switch to \(destination)?",
+            message: doomed == 1
+                ? "Switching to \(destination) will remove 1 \(noun) posting."
+                : "Switching to \(destination) will remove \(doomed) \(noun) postings."
+        )
+    }
+
+    private func requestCountries(_ codes: Set<String>) {
+        guard codes != scrapePreferences.countries else { return }
+
+        var proposed = scrapePreferences.filter
+        proposed.countries = codes
+        let doomed = PostingPurge.unmatched(postings, under: proposed).count
+        guard doomed > 0 else {
+            apply(.countries(codes))
+            return
+        }
+
+        pendingPurge = PendingPurge(
+            change: .countries(codes),
+            count: doomed,
+            title: "Change countries?",
+            message: doomed == 1
+                ? "1 stored posting is somewhere you\u{2019}d no longer be watching. It will be removed."
+                : "\(doomed) stored postings are somewhere you\u{2019}d no longer be watching. They will be removed."
+        )
+    }
+
+    /// Writes the setting, deletes what it stranded, and refreshes so the feed refills in the
+    /// same beat instead of looking empty until the next scheduled scrape.
+    private func apply(_ change: Change) {
+        switch change {
+        case .roleLevel(let level): scrapePreferences.roleLevel = level
+        case .countries(let codes): scrapePreferences.countries = codes
+        }
+        pendingPurge = nil
+
+        PostingPurge.purge(postings, under: scrapePreferences.filter, in: modelContext)
+        // Saved rather than left to autosave, matching the other delete path in the app
+        // (`ManageCompaniesView.remove`): the refresh that follows writes to the same store.
+        try? modelContext.save()
+
+        Task { await scrapeCoordinator.refreshNow() }
+    }
+
     private enum PhoneTestState: Equatable {
         case idle
         case sending
@@ -171,5 +288,8 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+        .modelContainer(BarnacleStore.makeContainer(inMemory: true))
         .environment(NotificationService())
+        .environment(ScrapePreferences())
+        .environment(ScrapeCoordinator(container: BarnacleStore.makeContainer(inMemory: true)))
 }

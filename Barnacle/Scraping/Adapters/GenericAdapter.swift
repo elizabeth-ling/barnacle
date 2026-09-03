@@ -4,9 +4,10 @@ import SwiftSoup
 /// The HTML fallback for careers pages that aren't on a known ATS (§4).
 ///
 /// Every other adapter asks an API for a list of jobs. This one has no API to ask, so it
-/// inverts the problem: fetch the page, take every link on it, and keep the ones whose link
-/// text reads like an internship title. `InternshipFilter` is doing the real work — we don't
-/// need to identify which links are "job links," only which ones are named like internships.
+/// inverts the problem: fetch the page and return every link whose text is shaped like a job
+/// title. It deliberately does **not** filter by role level — spec `07` moved that to
+/// `ScrapeRunner`, so the runner sees everything the page listed and reconciliation can still
+/// tell "gone from the page" from "no longer matches your settings."
 ///
 /// **What it deliberately doesn't do:** follow pagination, run JavaScript, or read anything the
 /// server didn't render. A board that paginates (Bloomberg's Avature site lists 12 of 363 per
@@ -17,8 +18,10 @@ struct GenericAdapter: ATSAdapter {
     /// (spec `03`) decides what's generic, and this is where those companies land.
     static func matches(url: URL) -> Bool { true }
 
-    /// A page pathological enough to blow past this is misparsed, not a careers page.
-    private static let maxPostings = 200
+    /// A sanity cap on *links*, not postings: with the role filter gone from here (spec `07`)
+    /// this adapter returns every plausible title on the page and lets the runner choose. A
+    /// careers page with more than this many is misparsed, not a careers page.
+    private static let maxPostings = 1000
 
     func fetchInternships(for company: CompanySnapshot) async throws -> [ScrapedJob] {
         guard !company.careerURLs.isEmpty else { throw ScrapeError.noCareerURLs }
@@ -71,7 +74,6 @@ struct GenericAdapter: ATSAdapter {
 
         for link in links {
             guard let title = title(of: link), isPlausibleTitle(title),
-                  InternshipFilter.isInternship(title: title),
                   let href = try? link.attr("abs:href"),
                   let resolved = URL(string: href),
                   let scheme = resolved.scheme?.lowercased(),
@@ -123,7 +125,7 @@ struct GenericAdapter: ATSAdapter {
 
     /// Keeps nav furniture out of the feed.
     ///
-    /// The filter alone would accept an "Internships" menu item, since that's a whole-word
+    /// The role filter alone would accept an "Internships" menu item, since that's a whole-word
     /// match. Real job titles run to several words; category links are one or two.
     private static func isPlausibleTitle(_ title: String) -> Bool {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)

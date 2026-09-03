@@ -8,7 +8,9 @@ enum URLCheckOutcome: Sendable, Equatable {
     /// Not a URL we can parse. Nothing to save — the user has to fix it.
     case invalid(message: String)
 
-    /// Detected, and the adapter's test fetch worked. `internships` is what it found.
+    /// Detected, and the adapter's test fetch worked. `internships` is how many of the postings
+    /// it found match the user's settings (spec `07`) — the count of what would actually be
+    /// stored, not of everything the board lists.
     case reachable(detection: ATSDetection, internships: Int)
 
     /// Detected correctly, but spec `01` hasn't built this ATS's adapter yet. Saving is fine —
@@ -42,7 +44,13 @@ enum URLCheckOutcome: Sendable, Equatable {
 /// Runs spec `03`'s Add-time pipeline for one URL: normalize and classify, reclassify a page
 /// that merely embeds an ATS, then do a one-shot test fetch with the chosen adapter.
 enum CompanyURLChecker {
-    static func check(_ raw: String, companyName: String) async -> URLCheckOutcome {
+    /// - Parameter filter: the settings the count is reported against. Defaults to the stored
+    ///   ones so the modal doesn't have to carry them down (spec `07`).
+    static func check(
+        _ raw: String,
+        companyName: String,
+        filter: ScrapeFilter = .stored()
+    ) async -> URLCheckOutcome {
         guard var detection = ATSDetector.detect(raw) else {
             return .invalid(message: "That doesn\u{2019}t look like a careers page URL.")
         }
@@ -77,8 +85,20 @@ enum CompanyURLChecker {
         )
 
         do {
+            // Adapters return everything the board lists now that the filter lives in
+            // `ScrapeRunner` (spec `07`), so apply the same rule here — a count of every job at
+            // the company would tell the user nothing about what they'd actually see.
             let jobs = try await adapter.fetchInternships(for: snapshot)
-            return .reachable(detection: detection, internships: jobs.count)
+            let matching = jobs.filter { job in
+                guard filter.admits(title: job.title) else { return false }
+                let location = LocationClassifier.classify(
+                    job.location,
+                    structuredCountries: job.structuredCountries,
+                    isRemote: job.isRemote
+                )
+                return filter.admits(location)
+            }
+            return .reachable(detection: detection, internships: matching.count)
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             return .unreachable(detection: detection, message: message)

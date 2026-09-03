@@ -12,12 +12,15 @@ actor ScrapeRunner {
     /// Politeness delay between companies (§7). Only applied *between* companies.
     private static let betweenCompaniesDelay: ClosedRange<Double> = 1...2
 
-    /// Scrapes every active company in turn.
+    /// Scrapes every active company in turn, storing only what `filter` admits.
+    ///
+    /// The filter is passed in rather than read here so one pass can't half-apply a settings
+    /// change made while it runs (spec `07`).
     ///
     /// Never throws: a company that fails is logged and recorded in `ScrapeRun.failures`,
     /// and the run continues with the next one. The coordinator serializes calls, so this
     /// is never re-entered while a run is in flight.
-    func scrapeAll() async -> ScrapeRun {
+    func scrapeAll(filter: ScrapeFilter) async -> ScrapeRun {
         let startedAt = Date()
         let companies = activeCompanies()
 
@@ -31,7 +34,7 @@ actor ScrapeRunner {
 
             let name = company.name
             do {
-                let fresh = try await scrape(company)
+                let fresh = try await scrape(company, filter: filter)
                 newPostings.append(contentsOf: fresh)
                 ScrapeLog.logger.info("Scraped \(name, privacy: .public): \(fresh.count) new")
             } catch {
@@ -68,7 +71,7 @@ actor ScrapeRunner {
     /// Fetches, dedups, inserts, and saves for one company. Returns only genuinely new
     /// postings — and only once the save succeeded, so we never notify about a posting we
     /// failed to store.
-    private func scrape(_ company: Company) async throws -> [NewPosting] {
+    private func scrape(_ company: Company, filter: ScrapeFilter) async throws -> [NewPosting] {
         guard let adapter = ATSAdapterRegistry.adapter(for: company.atsType) else {
             throw ScrapeError.unsupportedATS(company.atsType)
         }
@@ -81,8 +84,22 @@ actor ScrapeRunner {
         var seenRawIDs: Set<String> = []
 
         for job in scraped where !job.rawID.isEmpty {
-            // Guards against a source listing the same id twice in one payload.
+            // Guards against a source listing the same id twice in one payload. Recorded
+            // *before* the filter: `seenRawIDs` is what the source listed, and reconciliation
+            // must not read "no longer matches your settings" as "gone from the board."
             guard seenRawIDs.insert(job.rawID).inserted else { continue }
+
+            // Spec `07`: the one place role level and location are applied. Filtering at scrape
+            // time rather than read time means nothing unwanted is ever stored, so the Feed,
+            // the notifier, and anything added later are correct by construction.
+            guard filter.admits(title: job.title) else { continue }
+            let location = LocationClassifier.classify(
+                job.location,
+                structuredCountries: job.structuredCountries,
+                isRemote: job.isRemote
+            )
+            guard filter.admits(location) else { continue }
+
             guard try !isStored(companyID: snapshot.id, rawID: job.rawID) else { continue }
 
             let posting = JobPosting(
@@ -93,6 +110,9 @@ actor ScrapeRunner {
                 datePosted: job.datePosted,
                 dateFirstSeen: now,
                 location: job.location,
+                countryCode: location.primaryCountry(preferring: filter.countries),
+                isRemote: location.isRemote,
+                roleLevel: filter.roleLevel.rawValue,
                 rawID: job.rawID
             )
             modelContext.insert(posting)
@@ -125,9 +145,12 @@ actor ScrapeRunner {
         return try modelContext.fetchCount(descriptor) > 0
     }
 
-    /// Postings are never deleted (§5) — one that has dropped off the source is stamped
+    /// Postings are never deleted here (§5) — one that has dropped off the source is stamped
     /// `closedAt` instead, and un-stamped if it comes back. Only runs after a successful
     /// fetch, so a network error can't mass-close a company's postings.
+    ///
+    /// `stillListed` is everything the source listed, filter or no filter (spec `07`), so a
+    /// posting the user's settings now exclude isn't reported as closed.
     private func reconcileClosed(companyID: UUID, stillListed: Set<String>, now: Date) {
         let descriptor = FetchDescriptor<JobPosting>(
             predicate: #Predicate { $0.companyID == companyID }
@@ -141,6 +164,36 @@ actor ScrapeRunner {
                 posting.closedAt = now
             }
         }
+    }
+}
+
+extension ScrapeRunner {
+    /// One-time backfill for postings stored before spec `07` (guarded by the coordinator's
+    /// `scrape.didBackfillRegions` flag): they have a `location` string but no `countryCode`.
+    ///
+    /// Classifies and stamps only. It never deletes — a purge is something the user asks for in
+    /// Settings and confirms, never something a launch does behind their back.
+    func backfillRegions() -> Int {
+        let descriptor = FetchDescriptor<JobPosting>()
+        guard let stored = try? modelContext.fetch(descriptor) else { return 0 }
+
+        var stamped = 0
+        for posting in stored where posting.countryCode == nil && posting.roleLevel == nil {
+            let match = LocationClassifier.classify(posting.location)
+            posting.countryCode = match.primaryCountry(preferring: [])
+            posting.isRemote = match.isRemote
+            // Whichever level the title reads as, rather than whichever is selected now: these
+            // rows predate the setting, and every one of them was stored as an internship.
+            posting.roleLevel = RoleLevel.allCases
+                .first { RoleLevelFilter.matches(title: posting.title, level: $0) }?
+                .rawValue
+            stamped += 1
+        }
+
+        if stamped > 0 {
+            try? modelContext.save()
+        }
+        return stamped
     }
 }
 

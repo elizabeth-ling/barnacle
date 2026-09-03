@@ -21,7 +21,6 @@ struct LeverAdapter: ATSAdapter {
         let postings = try await fetchJSON([Posting].self, from: url)
 
         return postings
-            .filter { InternshipFilter.isInternship(title: $0.text) }
             .map { posting in
                 ScrapedJob(
                     rawID: posting.id,

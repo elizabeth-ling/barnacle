@@ -1,14 +1,20 @@
 import Foundation
 
-/// One source of internship postings (§4).
+/// One source of postings (§4).
 ///
-/// Implementations are stateless value types: they fetch, filter with `InternshipFilter`,
-/// and map to `ScrapedJob`. Storage, dedup, and scheduling all live in `ScrapeRunner`.
+/// Implementations are stateless value types: they fetch and map to `ScrapedJob`. Storage,
+/// dedup, filtering, and scheduling all live in `ScrapeRunner`.
 protocol ATSAdapter: Sendable {
     /// Whether this adapter handles the given careers URL. Used by detection (spec `03`).
     static func matches(url: URL) -> Bool
 
-    /// The company's current internship postings, already filtered by `InternshipFilter`.
+    /// Everything the source currently lists for this company.
+    ///
+    /// - Important: **do not filter here.** Spec `07` moved role level and location into
+    ///   `ScrapeRunner` so the rule lives in one place and `reconcileClosed` can still tell
+    ///   "gone from the source" from "no longer matches your settings." The name is §4's and
+    ///   predates that move. Returning less than the source lists would close stored postings
+    ///   that are still open.
     func fetchInternships(for company: CompanySnapshot) async throws -> [ScrapedJob]
 }
 

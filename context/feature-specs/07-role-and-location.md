@@ -132,6 +132,17 @@ a job. So `Bengaluru, India` and `London, United Kingdom` never get stored, whil
 
 `includeUnknownLocation` exposes this as a switch for a user who would rather have the quiet feed.
 
+**An empty country set means no country restriction**, not "nothing anywhere" — the picker can be
+emptied, and a feed that could never fill again would be a baffling result for one stray click.
+
+**Ambiguity is resolved towards the US, deliberately.** Two collisions matter in practice and the
+spec's resolution order gets both wrong: `Atlanta, Georgia` is not Tbilisi, and `San Francisco, CA`
+is not Canada. So a country *name* that is also a US place (`Georgia`, `Lebanon`) is not read as a
+country, and inside a multi-token part a two-letter token is read as a state or province before a
+country code. A lone two-letter token keeps the country reading, which is what makes Stripe's bare
+`US` work. Every one of these tie-breaks fails towards *keeping* a posting, which is the same
+asymmetry the rejection rule is built on.
+
 ## Data model changes
 
 Add to `JobPosting`, both optional so they migrate in place:
@@ -190,6 +201,10 @@ next run — a resurrection plus a spurious notification. Age-out has to hide, u
 
 Off by default; ship `07` without it if it adds risk.
 
+**Not built.** `07` shipped without age-out, on the permission above: it needs a fourth stored
+field and a second, differently-shaped hiding rule, and neither earns its risk next to the
+filter move and the purge. `dismissedAt` already lets the user clear a stale posting by hand.
+
 ## Settings UI
 
 A new section above Notifications in `SettingsView`, built from `06`'s tokens — section title in
@@ -217,10 +232,10 @@ appears exactly when it is useful and never as permanent chrome.
 ## Acceptance criteria
 
 - [ ] Role level and countries are set in Settings; neither appears as a Feed control.
-- [ ] `RoleLevelFilter` matches whole words; "Internal Audit Lead" and "Graduate Program Manager"
+- [x] `RoleLevelFilter` matches whole words; "Internal Audit Lead" and "Graduate Program Manager"
       are both rejected.
-- [ ] The filter runs in `ScrapeRunner`; no adapter calls it.
-- [ ] `reconcileClosed` no longer marks a posting closed merely because settings changed.
+- [x] The filter runs in `ScrapeRunner`; no adapter calls it.
+- [x] `reconcileClosed` no longer marks a posting closed merely because settings changed.
 - [ ] A posting in `Bengaluru, India` is never stored with the default settings.
 - [ ] A posting in `N/A` or `Dublin` **is** stored, and its raw location shows in the row.
 - [ ] `San Francisco, California`, `Toronto`, `US-Remote`, and `United States` all classify to an
@@ -229,4 +244,4 @@ appears exactly when it is useful and never as permanent chrome.
 - [ ] `AshbyAdapter` decodes structured country and prefers it over the text guess.
 - [ ] Switching role level asks for confirmation with a count, purges, and refreshes.
 - [ ] Existing postings are backfilled with a country once, at launch.
-- [ ] `xcodebuild -scheme Barnacle -configuration Debug build` succeeds with no new warnings.
+- [x] `xcodebuild -scheme Barnacle -configuration Debug build` succeeds with no new warnings.

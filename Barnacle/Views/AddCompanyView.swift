@@ -206,11 +206,14 @@ private struct URLCheckStatus: View {
         .help(help ?? "")
     }
 
+    /// Deliberately says "matching" rather than "internships": the count now reflects the
+    /// user's role level and countries (spec `07`), and a new-grad seeker isn't being told
+    /// about internships.
     private static func internshipCount(_ count: Int) -> String {
         switch count {
-        case 0: "No internships listed right now"
-        case 1: "Found 1 internship"
-        default: "Found \(count) internships"
+        case 0: "No matching roles listed right now"
+        case 1: "Found 1 matching role"
+        default: "Found \(count) matching roles"
         }
     }
 }

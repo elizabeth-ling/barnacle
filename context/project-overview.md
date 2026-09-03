@@ -117,7 +117,9 @@ protocol ATSAdapter {
 }
 ```
 
-`fetchInternships` returns only postings whose title matches the internship filter (§6).
+`fetchInternships` returns **everything the source lists** — spec `07` moved the role-level and
+location filter into `ScrapeRunner`, so the rule lives in one place and reconciliation can still
+tell "gone from the source" from "no longer matches your settings." The name predates that move.
 Build adapters in this order: **Greenhouse → Lever → Ashby → SmartRecruiters → Generic →
 Workday**. Greenhouse + Lever alone cover a large share of tech internships, so the app is
 useful after just those two.
@@ -155,7 +157,10 @@ Three entities. Keep them this small.
 | `url` | String | Direct link to the posting. Opens in browser on click. |
 | `datePosted` | Date? | From the ATS when available (Greenhouse `updated_at`, Lever `createdAt`, etc.). |
 | `dateFirstSeen` | Date | When our scraper first saw it. Used for sort/date when `datePosted` is nil. |
-| `location` | String? | Optional; show if present. |
+| `location` | String? | Optional; show if present. The raw string, always — the row shows it so the user can judge an odd one. |
+| `countryCode` | String? | ISO 3166-1 alpha-2, set at insert by `LocationClassifier` (spec `07`). Nil = unknown, not "nowhere". |
+| `isRemote` | Bool | Whether the source called the posting remote. Default false. |
+| `roleLevel` | String? | The `RoleLevel` that admitted the posting (spec `07`). |
 | `rawID` | String | The ATS's own job id. Primary key for dedup. |
 
 **Effective date** (used everywhere for display + sort) = `datePosted ?? dateFirstSeen`.
@@ -164,6 +169,12 @@ Three entities. Keep them this small.
 same `(companyID, rawID)`. New postings are inserted and flagged to the notifier (spec `04`).
 Postings that disappear from the source may be marked closed/removed, but **don't delete
 them** — the user may still want the record. (Keep a `closedAt: Date?` if easy; optional.)
+
+**One deliberate exception (spec `07`):** changing the role level or the countries in Settings
+*deletes* the postings those settings strand, after a confirmation that states the count. That
+is safe only because the purge criterion and the new scrape filter are the same rule, so nothing
+deleted can be re-inserted on the next run. Deleting for any other reason still fights dedup —
+which is why a dismissal (spec `02`) marks `dismissedAt` instead.
 
 ### Application (jobs the user applied to — the second tab)
 | Field | Type | Notes |
@@ -182,13 +193,22 @@ but the entity stands alone.
 
 ---
 
-## 6. Internship filter
+## 6. Role-level filter
 
-A posting counts as an internship if its **title**, lowercased, contains any of these as a
-**whole word** (with an optional plural `s`): `intern`, `internship`, `co-op`, `co op`, `coop`.
+The user picks a **role level** in Settings (spec `07`) — `internship` or `newGrad`, defaulting
+to `internship` — and a posting is kept only if its **title**, lowercased, contains one of that
+level's keywords as a **whole word** (with an optional plural `s`):
 
-Include the co-op variants because some companies use that term. This runs inside each adapter
-so we never store non-internship jobs.
+- **`internship`**: `intern`, `internship`, `co-op`, `co op`, `coop`.
+- **`newGrad`**: `new grad`, `new graduate`, `university grad`, `university graduate`,
+  `entry level`, `entry-level`, `early career`, `campus`, `graduate` — minus a negative list
+  (`program manager`, `recruiter`, `recruiting`, `coordinator`, `director`, `manager`, `lead`,
+  `senior`, `staff`, `principal`), because `graduate` alone reads "Graduate Program Manager" as
+  a new-grad role.
+
+Include the co-op variants because some companies use that term. This runs once in
+`ScrapeRunner`, not in the adapters (spec `07`), so we never store a role the user isn't looking
+for and reconciliation stays honest.
 
 **Match whole words, not substrings.** A plain `contains "intern"` check reads *"Internal Audit
 Lead"* as an internship — on Stripe's live Greenhouse board that was 9 false positives out of 11
@@ -198,9 +218,14 @@ optional trailing `s` is what catches plurals, since `intern` as a whole word do
 "Interns" on its own. `internship` earns its own entry under this rule: whole-word `intern` no
 longer covers it, the way a substring check did.
 
-Implemented in `InternshipFilter` (`Barnacle/Models/InternshipFilter.swift`) as a per-keyword
-regex, `\b<keyword>s?\b`, against the lowercased title. Keep the keyword list as the source of
-truth — the matching rule is applied to every entry in it.
+Implemented in `RoleLevelFilter` (`Barnacle/Models/RoleLevelFilter.swift`) as a per-keyword
+regex, `\b<keyword>s?\b`, against the lowercased title. Keep the keyword lists as the source of
+truth — the matching rule is applied to every entry in them.
+
+**Location is filtered in the same place, by different rules.** `LocationClassifier` resolves the
+free-text location to countries and `ScrapeFilter` rejects a posting only when *every* part
+resolved and none is a country the user watches — anything unknown is kept. See spec `07` for
+why the asymmetry with the title rule is deliberate.
 
 ---
 

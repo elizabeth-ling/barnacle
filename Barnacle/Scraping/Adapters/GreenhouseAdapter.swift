@@ -21,7 +21,6 @@ struct GreenhouseAdapter: ATSAdapter {
         let payload = try await fetchJSON(Payload.self, from: url)
 
         return payload.jobs
-            .filter { InternshipFilter.isInternship(title: $0.title) }
             .map { job in
                 ScrapedJob(
                     rawID: String(job.id),

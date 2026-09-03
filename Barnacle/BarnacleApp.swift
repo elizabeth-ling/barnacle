@@ -18,13 +18,21 @@ struct BarnacleApp: App {
     /// the same reason as the coordinator: it has to outlive every window.
     @State private var overlay: QuickAddOverlay
 
+    /// What to look for (spec `07`). One instance shared by the scrape loop and Settings, so a
+    /// change lands on the next scrape without a restart.
+    @State private var scrapePreferences: ScrapePreferences
+
     init() {
         let notifications = NotificationService()
         // Before the app finishes launching: a notification clicked while Barnacle is closed
         // launches it and delivers the response during startup.
         notifications.registerNotificationDelegate()
 
-        let scrapeCoordinator = ScrapeCoordinator(container: BarnacleStore.shared)
+        let scrapePreferences = ScrapePreferences()
+        let scrapeCoordinator = ScrapeCoordinator(
+            container: BarnacleStore.shared,
+            preferences: scrapePreferences
+        )
         scrapeCoordinator.onNewPostings = { postings in
             notifications.notify(about: postings)
         }
@@ -37,6 +45,7 @@ struct BarnacleApp: App {
         _notifications = State(initialValue: notifications)
         _scrapeCoordinator = State(initialValue: scrapeCoordinator)
         _overlay = State(initialValue: overlay)
+        _scrapePreferences = State(initialValue: scrapePreferences)
     }
 
     var body: some Scene {
@@ -46,6 +55,7 @@ struct BarnacleApp: App {
             RootView()
                 .environment(scrapeCoordinator)
                 .environment(notifications)
+                .environment(scrapePreferences)
                 .registersMainWindowOpener(with: notifications)
                 // Two tasks, not one: `requestAuthorization` suspends until the user answers
                 // the system prompt, and the first scrape must not wait behind that.
@@ -64,9 +74,14 @@ struct BarnacleApp: App {
         }
         .modelContainer(BarnacleStore.shared)
 
+        // The settings window needs the store: changing role level or countries purges the
+        // postings those settings stranded (spec `07`).
         Settings {
             SettingsView()
                 .environment(notifications)
+                .environment(scrapePreferences)
+                .environment(scrapeCoordinator)
         }
+        .modelContainer(BarnacleStore.shared)
     }
 }

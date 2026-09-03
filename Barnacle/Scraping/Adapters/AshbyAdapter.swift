@@ -25,7 +25,6 @@ struct AshbyAdapter: ATSAdapter {
         let payload = try await fetchJSON(Payload.self, from: url)
 
         return payload.jobs
-            .filter { InternshipFilter.isInternship(title: $0.title) }
             .map { job in
                 ScrapedJob(
                     rawID: job.id,
@@ -34,7 +33,13 @@ struct AshbyAdapter: ATSAdapter {
                     // opens the posting so the user reads it before applying.
                     url: job.jobUrl ?? job.applyUrl ?? "",
                     datePosted: ISO8601Date.parse(job.publishedAt),
-                    location: job.location
+                    location: job.location,
+                    // Ashby is the only ATS in §4 that states the country outright, so we take
+                    // it and let `LocationClassifier` prefer it over any guess made from the
+                    // text (spec `07`). Secondary locations count: a posting listed in both
+                    // Toronto and Bengaluru is one the user should see.
+                    structuredCountries: job.countries,
+                    isRemote: job.isRemote ?? false
                 )
             }
             .filter { !$0.url.isEmpty }
@@ -54,6 +59,39 @@ struct AshbyAdapter: ATSAdapter {
             let publishedAt: String?
             let jobUrl: String?
             let applyUrl: String?
+            let isRemote: Bool?
+            let address: Address?
+            let secondaryLocations: [SecondaryLocation]?
+
+            /// Every country this posting names, primary first. Free of duplicates so a
+            /// three-office posting in one country doesn't look like three.
+            var countries: [String] {
+                var candidates: [String?] = [address?.country]
+                candidates.append(contentsOf: (secondaryLocations ?? []).map { $0.address?.country })
+
+                var seen: [String] = []
+                for candidate in candidates {
+                    guard let candidate, !candidate.isEmpty, !seen.contains(candidate) else { continue }
+                    seen.append(candidate)
+                }
+                return seen
+            }
+
+            struct SecondaryLocation: Decodable {
+                let address: Address?
+            }
+
+            /// `{ "postalAddress": { "addressCountry": "United States", ... } }`. Only the
+            /// country is decoded — spec `07` is country-level and says so on purpose.
+            struct Address: Decodable {
+                let postalAddress: PostalAddress?
+
+                var country: String? { postalAddress?.addressCountry }
+
+                struct PostalAddress: Decodable {
+                    let addressCountry: String?
+                }
+            }
         }
 
         // Jobs also carry `isListed`. We deliberately don't filter on it: an unlisted posting
