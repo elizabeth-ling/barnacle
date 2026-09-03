@@ -32,6 +32,20 @@ struct ScrapeSettingsSection: View {
                 CountrySelector(selection: preferences.countries, onChange: onSelectCountries)
             }
 
+            UnknownLocationToggle(preferences: preferences)
+        }
+    }
+}
+
+/// The unknown-location switch and the sentence that explains it (spec `07`).
+///
+/// Its own view because onboarding's step 2 (spec `09`) asks for the same control and the same
+/// explanation, and a second copy of that sentence would be one to keep in step with this one.
+struct UnknownLocationToggle: View {
+    @Bindable var preferences: ScrapePreferences
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Metrics.fieldSpacing) {
             Toggle(isOn: $preferences.includeUnknownLocation) {
                 Text("Include postings with an unrecognized location")
                     .font(Theme.Typography.body)

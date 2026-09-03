@@ -17,6 +17,14 @@ struct SettingsView: View {
 
     @State private var testState = PhoneTestState.idle
 
+    /// Cleared by "Show onboarding again" (spec `09`) — `RootView` presents the flow whenever
+    /// this is false, so clearing it is the whole of re-presenting.
+    @AppStorage(OnboardingView.completedKey) private var hasCompletedOnboarding = false
+
+    /// Settings is its own window, so the flow would otherwise wait for the main window to be
+    /// reopened by hand.
+    @Environment(\.openWindow) private var openWindow
+
     /// A settings change that would delete postings, held until the user confirms it.
     @State private var pendingPurge: PendingPurge?
 
@@ -64,6 +72,11 @@ struct SettingsView: View {
                 .padding(.vertical, 2)
 
             phoneSection(preferences: preferences)
+
+            Hairline()
+                .padding(.vertical, 2)
+
+            onboardingSection
         }
         .padding(Theme.Metrics.screenPadding)
         .frame(width: 460, alignment: .topLeading)
@@ -82,6 +95,30 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: { purge in
             Text(purge.message)
+        }
+    }
+
+    /// The only way to see the first-run flow twice without deleting the container (spec `09`).
+    private var onboardingSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Metrics.fieldSpacing) {
+            Text("Onboarding")
+                .font(Theme.Typography.sectionTitle)
+                .foregroundStyle(Theme.Palette.textPrimary)
+
+            HStack(spacing: 8) {
+                Button("Show onboarding again") {
+                    hasCompletedOnboarding = false
+                    openWindow(id: BarnacleWindow.main)
+                }
+                .buttonStyle(.barnacleSecondary)
+
+                Spacer(minLength: 8)
+            }
+
+            Text("Walks back through role, countries, and companies in the main window. Nothing is reset \u{2014} the steps start from what\u{2019}s set here.")
+                .font(Theme.Typography.metadata)
+                .foregroundStyle(Theme.Palette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

@@ -68,10 +68,10 @@ a wizard. The Feed's existing "no companies" empty state already handles that la
 ## Acceptance criteria
 
 - [ ] First launch presents onboarding; a second launch does not.
-- [ ] Each step writes into `ScrapePreferences`; onboarding holds no model of its own.
+- [x] Each step writes into `ScrapePreferences`; onboarding holds no model of its own.
 - [ ] Step 2 requires at least one country; step 3 does not require a company.
 - [ ] Skip at any step completes with working defaults.
 - [ ] Step 3's role counts reflect the choices made in steps 1 and 2.
 - [ ] Completing runs a scrape immediately.
 - [ ] "Show onboarding again" in Settings re-presents the flow.
-- [ ] `xcodebuild -scheme Barnacle -configuration Debug build` succeeds with no new warnings.
+- [x] `xcodebuild -scheme Barnacle -configuration Debug build` succeeds with no new warnings.
