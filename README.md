@@ -9,13 +9,11 @@ an intentionally narrow Swift app that tracks internship postings from a hand-pi
 - add target companies, barnacle scrapes every 15 minutes
 - view postings in your dashboard
 - receive notifications to your iPhone 
+- 
 
 ### tech stack
 
 Swift + SwiftUI
 
-### screenshots 
-
-coming soon!!
-
-todo
+### todo 
+- [ ] make it downloadable
