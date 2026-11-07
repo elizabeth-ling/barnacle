@@ -116,7 +116,7 @@ struct OnboardingView: View {
             if preferences.countries.isEmpty {
                 Text("Pick at least one country to carry on.")
                     .font(Theme.Typography.metadata)
-                    .foregroundStyle(Theme.Palette.accent)
+                    .foregroundStyle(Theme.Palette.danger)
             }
 
             UnknownLocationToggle(preferences: preferences)

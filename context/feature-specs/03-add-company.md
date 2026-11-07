@@ -18,7 +18,7 @@ Fields:
 
 Buttons: **Cancel**, **Add**. `Return` submits, `Esc` cancels.
 
-Styling per spec `06` (warm modal surface, serif title "Add company", tiny-font fields).
+Styling per spec `06` (modal surface, serif title "Add company", tiny-font fields).
 
 ## Adapter detection (on Add)
 

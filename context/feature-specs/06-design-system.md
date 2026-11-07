@@ -5,9 +5,12 @@ Applies to every screen: Feed (`02`), Add-Company modal (`03`), Applied tab + ov
 ## Direction
 
 Inspired by **Claude** (warm, calm, serif accents, generous but quiet) and **Postman**
-(dense, developer-tool efficiency, clear list rows, orange accent). The result should feel
-**warm, compact, and precise** — tiny fonts, serif headings, sans-serif body, warm whites and
-greys with a single Claude-orange accent.
+(dense, developer-tool efficiency, clear list rows). The result should feel **calm, compact,
+and precise** — tiny fonts, serif headings, sans-serif body, cool off-whites and greys with a
+single teal accent taken from the app icon.
+
+*Recoloured 2026-11-07 to match the new app icon, which is one teal mark on white. It was warm
+greys with a Claude-orange accent (`#D97757`) until then.*
 
 ## Typography
 
@@ -32,29 +35,37 @@ Respect Dynamic Type minimally, but the design target is compact. Don't go below
 
 ## Color palette
 
-Warm whites and greys with the Claude orange as the only accent.
+Cool off-whites and greys, faintly tinted toward the icon's teal, with that teal as the only
+accent.
 
 | Token | Hex | Use |
 |---|---|---|
-| `bg/primary` | `#FAF9F5` | App background (warm white). |
+| `bg/primary` | `#F7F9F9` | App background (cool off-white). |
 | `bg/surface` | `#FFFFFF` | Cards, rows, modal/overlay surfaces. |
-| `bg/surfaceAlt` | `#F5F4EF` | Hover/selected row, subtle fills. |
-| `border/hairline` | `#E7E4DC` | 1px separators, field borders. |
-| `text/primary` | `#20201E` | Titles, primary text (warm near-black). |
-| `text/secondary` | `#6B6A64` | Company names, dates, metadata (warm grey). |
-| `accent` | `#D97757` | Claude orange — buttons, active states, NEW badge. |
-| `accent/hover` | `#C25E42` | Pressed/hover accent. |
-| `accent/tintBg` | `#F6E9E2` | Very light orange fill behind badges/selection. |
+| `bg/surfaceAlt` | `#EFF4F4` | Hover/selected row, subtle fills. |
+| `border/hairline` | `#DDE5E5` | 1px separators, field borders. |
+| `text/primary` | `#1D2424` | Titles, primary text (cool near-black). |
+| `text/secondary` | `#5E6A6B` | Company names, dates, metadata (cool grey). |
+| `accent` | `#619B9D` | The icon's teal, exactly — button fills, strokes, glyphs. |
+| `accent/hover` | `#4F8789` | Pressed/hover accent. |
+| `accent/text` | `#3B6F71` | Accent as small type — NEW badge, active controls, links. |
+| `accent/tintBg` | `#E5F0F0` | Very light teal fill behind badges/selection. |
+| `danger` | `#9E4038` | Errors and warnings. |
+| `danger/tintBg` | `#F4E3E0` | The fill behind warning banners. |
+
+`accent/text` exists because the icon's teal is only 2.7:1 on its own tint — too light for 10–12pt
+type. `danger` exists because the accent used to double as the alert colour, which worked for
+orange; teal reads as "fine", so a failure drawn in it wouldn't look like one.
 
 Provide a **dark-mode** variant later if desired, but light warm-white is the primary look
 the user asked for. Ship light mode first.
 
 ### Status colours (added 2026-09-02)
 
-The one deliberate exception to "orange is the only accent": the Applied tab's five
+The one deliberate exception to "teal is the only accent": the Applied tab's five
 `ApplicationStatus` values are colour-coded, because status is the thing you scan that list
 for. Each is a text colour plus the light fill it sits on — the same relationship `accent`
-has with `accent/tintBg` — and all five are desaturated so they read as pills inside the warm
+has with `accent/tintBg` — and all five are desaturated so they read as pills inside the
 greys rather than competing with them.
 
 | Status | Text | Fill | Notes |
@@ -62,8 +73,8 @@ greys rather than competing with them.
 | `applied` | `#4A6D8C` | `#E7EEF4` | Muted blue — the neutral default state. |
 | `interviewing` | `#AD7A26` | `#F7EEDB` | Amber. |
 | `offer` | `#4E7A55` | `#E3EDE4` | Reuses the `success` green from spec `03`. |
-| `rejected` | `#9E4038` | `#F4E3E0` | Deeper and redder than `accent`, so it can't be misread as one. |
-| `ghosted` | `#87827A` | `#EEECE6` | Warm grey. |
+| `rejected` | `#9E4038` | `#F4E3E0` | Reuses `danger`. |
+| `ghosted` | `#7A8485` | `#E9EEEE` | Cool grey. |
 
 These live in `Theme.Palette.Status`; `ApplicationStatus.color` / `.tint` map onto them
 (`DesignSystem/StatusStyle.swift`), which also holds the three components that use them:
@@ -74,7 +85,7 @@ These live in `Theme.Palette.Status`; `ApplicationStatus.color` / `.tint` map on
 - **List rows (Feed & Applied):** compact, ~34–40pt tall. Title left-aligned primary;
   company + date as secondary metadata; optional location/status trailing. Full-row hover
   uses `bg/surfaceAlt`. Hairline separators, not heavy dividers. Postman-like density.
-- **NEW badge:** small pill or dot in `accent`, or `accent/tintBg` fill with `accent` text,
+- **NEW badge:** small pill or dot in `accent`, or `accent/tintBg` fill with `accent/text`,
   10pt uppercase. Sits near the title.
 - **Header `+` button:** `accent` fill, white glyph, sized to the quiet controls (same height
   and ~7pt radius), sitting at the end of the screen header's control row. This is each
@@ -111,10 +122,10 @@ These live in `Theme.Palette.Status`; `ApplicationStatus.color` / `.tint` map on
 ## Acceptance criteria
 
 - [x] Headings render in a serif (New York); body/UI in SF Pro.
-- [x] Palette matches the tokens above; the only accent is Claude orange.
+- [x] Palette matches the tokens above; the only accent is the icon's teal.
 - [x] Feed rows are compact with clear title / metadata hierarchy and a subtle hover.
-- [x] The `+` button is an orange control at the end of the screen header's control row.
+- [x] The `+` button is a teal control at the end of the screen header's control row.
 - [x] A row's hover-only action appears on the hovered row alone and reserves no space at rest.
-      *(Was "a floating orange circle, bottom-right" until 2026-09-02.)*
+      *(Was "a floating circle, bottom-right" until 2026-09-02.)*
 - [x] Each `ApplicationStatus` has its own muted colour, used everywhere status is shown.
-- [x] Modal and overlay use the warm surface, serif title, and tiny-font fields.
+- [x] Modal and overlay use the white surface, serif title, and tiny-font fields.

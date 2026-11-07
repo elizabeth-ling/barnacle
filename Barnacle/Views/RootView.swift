@@ -27,7 +27,7 @@ struct RootView: View {
         .frame(minWidth: 640, minHeight: 420)
         .tint(Theme.Palette.accent)
         .screenBackground()
-        // The palette is light warm-white only (spec `06` defers dark mode), so pin the
+        // The palette is light only (spec `06` defers dark mode), so pin the
         // appearance rather than paint these tokens onto dark system chrome.
         .preferredColorScheme(.light)
         .sheet(isPresented: isShowingOnboarding) {

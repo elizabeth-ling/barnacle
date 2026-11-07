@@ -2,39 +2,48 @@ import SwiftUI
 
 /// Design tokens (spec `06`). Every screen draws color, type, and spacing from here so the
 /// Feed (`02`), add-company modal (`03`), and Applied tab + overlay (`05`) read as one system:
-/// warm, compact, precise — Claude's calm serif chrome over Postman's dense rows.
+/// calm, compact, precise — taken from the app icon's one teal mark on white, over dense rows.
 ///
-/// The palette is fixed light warm-white; the spec defers a dark variant, so `RootView` pins the
+/// The palette is fixed light off-white; the spec defers a dark variant, so `RootView` pins the
 /// window to `.light` rather than letting these values land on dark system chrome.
 enum Theme {
-    /// Warm whites and greys with Claude orange as the only accent.
+    /// Cool off-whites and greys, faintly tinted toward the icon's teal, which is the only accent.
     enum Palette {
         /// `bg/primary` — app background.
-        static let background = Color(hex: 0xFAF9F5)
+        static let background = Color(hex: 0xF7F9F9)
         /// `bg/surface` — cards, rows, modal and overlay surfaces.
         static let surface = Color(hex: 0xFFFFFF)
         /// `bg/surfaceAlt` — hover/selected row, subtle fills.
-        static let surfaceAlt = Color(hex: 0xF5F4EF)
+        static let surfaceAlt = Color(hex: 0xEFF4F4)
         /// `border/hairline` — 1px separators, field borders.
-        static let hairline = Color(hex: 0xE7E4DC)
-        /// `text/primary` — titles and primary text (warm near-black).
-        static let textPrimary = Color(hex: 0x20201E)
-        /// `text/secondary` — company names, dates, metadata (warm grey).
-        static let textSecondary = Color(hex: 0x6B6A64)
-        /// `accent` — Claude orange. The only accent; use it sparingly.
-        static let accent = Color(hex: 0xD97757)
+        static let hairline = Color(hex: 0xDDE5E5)
+        /// `text/primary` — titles and primary text (cool near-black).
+        static let textPrimary = Color(hex: 0x1D2424)
+        /// `text/secondary` — company names, dates, metadata (cool grey).
+        static let textSecondary = Color(hex: 0x5E6A6B)
+        /// `accent` — the app icon's teal, exactly. The only accent; use it sparingly. For fills,
+        /// strokes, and glyphs; text takes `accentText`.
+        static let accent = Color(hex: 0x619B9D)
         /// `accent/hover` — pressed/hover accent.
-        static let accentHover = Color(hex: 0xC25E42)
-        /// `accent/tintBg` — very light orange fill behind badges and selection.
-        static let accentTint = Color(hex: 0xF6E9E2)
-        /// The one non-accent hue in the palette: spec `03` asks for a green check on a careers
-        /// URL that validated. Muted to sit beside the warm greys rather than shout over them.
+        static let accentHover = Color(hex: 0x4F8789)
+        /// `accent/text` — accent as small type. The icon's teal is only 2.7:1 on its own tint,
+        /// too light for 10–12pt labels; this is the same hue at 4.9:1.
+        static let accentText = Color(hex: 0x3B6F71)
+        /// `accent/tintBg` — very light teal fill behind badges and selection.
+        static let accentTint = Color(hex: 0xE5F0F0)
+        /// Errors and warnings. Separate from the accent because teal reads as "fine", so a
+        /// failure drawn in it wouldn't look like one. Same brick red as `Status.rejected`.
+        static let danger = Color(hex: 0x9E4038)
+        /// The light fill `danger` sits on, for warning banners.
+        static let dangerTint = Color(hex: 0xF4E3E0)
+        /// Spec `03` asks for a green check on a careers URL that validated. Muted to sit beside
+        /// the cool greys rather than shout over them.
         static let success = Color(hex: 0x4E7A55)
 
         /// One muted hue per `ApplicationStatus`, so the Applied tab reads at a glance. Each is
         /// a text color plus the light fill it sits on, in the same relationship the accent has
-        /// with `accentTint`. Kept desaturated on purpose — the warm greys are still the page,
-        /// and these are pills inside it. `ApplicationStatus.color` / `.tint` map onto them.
+        /// with `accentTint`. Kept desaturated on purpose — the greys are still the page, and
+        /// these are pills inside it. `ApplicationStatus.color` / `.tint` map onto them.
         enum Status {
             static let applied = Color(hex: 0x4A6D8C)
             static let appliedTint = Color(hex: 0xE7EEF4)
@@ -43,11 +52,11 @@ enum Theme {
             /// Reuses the `success` green — an offer is the good ending.
             static let offer = Color(hex: 0x4E7A55)
             static let offerTint = Color(hex: 0xE3EDE4)
-            /// Deeper and redder than the accent, so a rejected pill can't be misread as one.
-            static let rejected = Color(hex: 0x9E4038)
-            static let rejectedTint = Color(hex: 0xF4E3E0)
-            static let ghosted = Color(hex: 0x87827A)
-            static let ghostedTint = Color(hex: 0xEEECE6)
+            /// Reuses `danger` — a rejection is the bad ending.
+            static let rejected = danger
+            static let rejectedTint = dangerTint
+            static let ghosted = Color(hex: 0x7A8485)
+            static let ghostedTint = Color(hex: 0xE9EEEE)
         }
     }
 

@@ -12,7 +12,7 @@ struct Hairline: View {
 }
 
 extension View {
-    /// The warm-white app background (`bg/primary`).
+    /// The off-white app background (`bg/primary`).
     func screenBackground() -> some View {
         background(Theme.Palette.background)
     }

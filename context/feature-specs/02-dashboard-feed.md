@@ -34,7 +34,7 @@ Each row shows, per the user's request:
 - **Location** — `location` when the ATS provides one, as muted trailing text immediately
   before the date. Hidden entirely when the source doesn't supply one, rather than showing
   a placeholder.
-- A small **"NEW"** badge (Claude-orange dot or pill) on postings the user hasn't opened
+- A small **"NEW"** badge (accent-colored dot or pill) on postings the user hasn't opened
   yet. Clear the flag once the row is clicked.
 
   *This originally read "first seen in the last 24h **or** not yet viewed," which fights the

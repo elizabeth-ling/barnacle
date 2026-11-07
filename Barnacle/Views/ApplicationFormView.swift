@@ -54,7 +54,7 @@ struct ApplicationFormView: View {
             if let errorMessage = model.errorMessage {
                 Text(errorMessage)
                     .font(Theme.Typography.metadata)
-                    .foregroundStyle(Theme.Palette.accent)
+                    .foregroundStyle(Theme.Palette.danger)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

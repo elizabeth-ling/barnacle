@@ -8,7 +8,7 @@ struct NewBadge: View {
         Text(text.uppercased())
             .font(Theme.Typography.microLabel)
             .tracking(Theme.Typography.microLabelTracking)
-            .foregroundStyle(Theme.Palette.accent)
+            .foregroundStyle(Theme.Palette.accentText)
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
             .background(Theme.Palette.accentTint, in: Capsule())

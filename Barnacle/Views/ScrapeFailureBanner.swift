@@ -34,7 +34,7 @@ struct ScrapeFailureBanner: View {
                 .padding(.bottom, 8)
             }
         }
-        .background(Theme.Palette.accentTint)
+        .background(Theme.Palette.dangerTint)
         .overlay(alignment: .bottom) { Hairline() }
         .animation(Theme.Metrics.hoverAnimation, value: isExpanded)
     }
@@ -43,7 +43,7 @@ struct ScrapeFailureBanner: View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 10))
-                .foregroundStyle(Theme.Palette.accent)
+                .foregroundStyle(Theme.Palette.danger)
 
             Text(summaryText)
                 .font(Theme.Typography.metadata)

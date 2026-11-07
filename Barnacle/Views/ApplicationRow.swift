@@ -54,7 +54,7 @@ struct ApplicationRow: View {
                             .truncationMode(.middle)
                     }
                     .font(Theme.Typography.metadata)
-                    .foregroundStyle(Theme.Palette.accent)
+                    .foregroundStyle(Theme.Palette.accentText)
                 }
                 .buttonStyle(.plain)
                 .help("Open in your browser")

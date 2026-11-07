@@ -71,7 +71,7 @@ struct QuietControlButtonStyle: ButtonStyle {
         var body: some View {
             configuration.label
                 .font(Theme.Typography.metadata)
-                .foregroundStyle(isActive ? Theme.Palette.accent : Theme.Palette.textSecondary)
+                .foregroundStyle(isActive ? Theme.Palette.accentText : Theme.Palette.textSecondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(fill, in: RoundedRectangle(cornerRadius: Theme.Metrics.controlRadius, style: .continuous))

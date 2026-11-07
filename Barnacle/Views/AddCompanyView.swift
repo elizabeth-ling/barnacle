@@ -7,7 +7,7 @@ import SwiftData
 /// Typing just a name and pressing `Return` probes for the company's job board (spec `08`) —
 /// the URL field stays as the fallback for a name nothing answers to.
 ///
-/// `Return` submits, `Esc` cancels. Chrome is spec `06`'s warm surface, serif title, tiny fields.
+/// `Return` submits, `Esc` cancels. Chrome is spec `06`'s surface, serif title, tiny fields.
 struct AddCompanyView: View {
     /// When set, the modal edits this company's URLs in place instead of creating one
     /// (spec `08`, "Fixing a wrong URL"). Same fields, same checker, detection re-run on save.
@@ -39,7 +39,7 @@ struct AddCompanyView: View {
             if let formError = model.formError {
                 Text(formError)
                     .font(Theme.Typography.metadata)
-                    .foregroundStyle(model.formErrorIsAdvisory ? Theme.Palette.textSecondary : Theme.Palette.accent)
+                    .foregroundStyle(model.formErrorIsAdvisory ? Theme.Palette.textSecondary : Theme.Palette.danger)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -318,12 +318,12 @@ private struct URLCheckStatus: View {
             case .unreachable(let detection, let message):
                 line(
                     icon: "exclamationmark.triangle",
-                    color: Theme.Palette.accent,
+                    color: Theme.Palette.danger,
                     text: "\(detection.atsType.displayName) detected, but the test fetch failed. Saving stores it as a generic page.",
                     help: message
                 )
             case .invalid(let message):
-                line(icon: "exclamationmark.triangle", color: Theme.Palette.accent, text: message)
+                line(icon: "exclamationmark.triangle", color: Theme.Palette.danger, text: message)
             case nil:
                 EmptyView()
             }

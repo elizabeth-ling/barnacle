@@ -139,7 +139,7 @@ struct SettingsView: View {
             .buttonStyle(.barnacleSecondary)
         }
         .padding(8)
-        .background(Theme.Palette.accentTint, in: RoundedRectangle(cornerRadius: Theme.Metrics.controlRadius, style: .continuous))
+        .background(Theme.Palette.dangerTint, in: RoundedRectangle(cornerRadius: Theme.Metrics.controlRadius, style: .continuous))
     }
 
     @ViewBuilder
@@ -208,7 +208,7 @@ struct SettingsView: View {
         case .failed(let message):
             Text(message)
                 .font(Theme.Typography.metadata)
-                .foregroundStyle(Theme.Palette.accentHover)
+                .foregroundStyle(Theme.Palette.danger)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

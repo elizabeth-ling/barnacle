@@ -153,7 +153,7 @@ struct CompanyFilterControl: View {
                 HStack(spacing: 6) {
                     Text(name)
                         .font(Theme.Typography.body)
-                        .foregroundStyle(isSelected ? Theme.Palette.accent : Theme.Palette.textPrimary)
+                        .foregroundStyle(isSelected ? Theme.Palette.accentText : Theme.Palette.textPrimary)
                         .lineLimit(1)
 
                     Spacer(minLength: 6)
@@ -161,7 +161,7 @@ struct CompanyFilterControl: View {
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(Theme.Palette.accent)
+                            .foregroundStyle(Theme.Palette.accentText)
                     }
                 }
                 .padding(.horizontal, 8)
