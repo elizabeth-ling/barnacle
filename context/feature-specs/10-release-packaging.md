@@ -34,15 +34,11 @@ So: **pay, or change the ask.** The rest of this spec assumes paid.
 
 ### Step 0 — confirm the account tier
 
-The keychain currently holds exactly one identity, `Apple Development: Elizabeth Ling (XJ78Q52STA)`,
-team `ART77YDPX6`. An Apple Development cert is issued to free accounts too, so its presence proves
-nothing about the tier.
+Done: the keychain holds `Developer ID Application: Elizabeth Ling (ART77YDPX6)`, which only a paid
+membership can issue. An Apple Development cert is issued to free accounts too, so it would not have
+proved the tier.
 
-Check at developer.apple.com/account → Certificates, IDs & Profiles → Certificates → `+`. If
-**Developer ID Application** is offered, the membership is paid. If it is missing, the account is
-free and must enroll first (approval is typically same-day to 48h).
-
-Create the certificate through **Xcode → Settings → Accounts → Manage Certificates → `+` → Developer
+For a new certificate, go through **Xcode → Settings → Accounts → Manage Certificates → `+` → Developer
 ID Application**, not the web portal — Xcode generates and keeps the private key locally, which is
 the half that matters.
 
@@ -59,7 +55,7 @@ Change as little as possible. The app is already shaped correctly.
 |---|---|---|
 | `PRODUCT_BUNDLE_IDENTIFIER` | `com.elizabeth.barnacle` — **unchanged** | It names the sandbox container. Changing it orphans every user's store, ours included. |
 | `ENABLE_HARDENED_RUNTIME` | `YES` (already set) | Notarization refuses anything else. |
-| `CODE_SIGN_IDENTITY` (Release) | `Developer ID Application` | Debug keeps `Apple Development`. |
+| `CODE_SIGN_IDENTITY` | `Apple Development` — **unchanged, in both configurations** | The export re-signs with Developer ID. Naming it here fails the archive: "automatically signed for development, but a conflicting code signing identity". |
 | `CODE_SIGN_STYLE` | `Automatic`, team `ART77YDPX6` | No provisioning profile is needed: nothing here uses a profile-gated entitlement. |
 | `MARKETING_VERSION` | the user-visible release number | Appears in the DMG filename and on the page. Bump every release. |
 | `CURRENT_PROJECT_VERSION` | monotonic integer | Bump every release, including re-cuts of the same marketing version. |
@@ -79,7 +75,8 @@ release goes through `archive`, never through the plain `build` the project uses
 Six steps, in this order. `Distribution/release.sh <version>` implements them.
 
 1. **Archive.**
-   `xcodebuild -scheme Barnacle -configuration Release -archivePath build/Barnacle.xcarchive archive`
+   `xcodebuild -scheme Barnacle -configuration Release -destination generic/platform=macOS
+   -archivePath build/Barnacle.xcarchive archive`
 2. **Export** with `Distribution/ExportOptions.plist` — `method` = `developer-id`, `teamID` =
    `ART77YDPX6`, `signingStyle` = `automatic`, `destination` = `export`. Add
    `-allowProvisioningUpdates` so automatic signing can work from the CLI.
@@ -102,8 +99,8 @@ for an app that verifies offline forever.
 
 ### Credentials
 
-Once, by hand: `xcrun notarytool store-credentials "barnacle" --apple-id <appleid> --team-id
-ART77YDPX6 --password <app-specific-password>`, where the password is generated at
+Once, by hand: `xcrun notarytool store-credentials barnacle --apple-id <appleid> --team-id
+ART77YDPX6`, which prompts for the password so it stays out of the shell history. Generate it at
 account.apple.com → Sign-In and Security → App-Specific Passwords.
 
 That command puts the secret in the login keychain and everything afterwards refers to it as
@@ -113,11 +110,12 @@ prompting mid-pipeline.
 
 ### The script's own rules
 
-- Takes the version as its one argument, and writes it into `MARKETING_VERSION` via `agvtool` or a
-  build setting override — the version is stated once, not in three files that drift.
-- Refuses to run on a dirty working tree or a non-tagged commit, because a DMG that cannot be traced
-  to a commit is unsupportable.
-- Prints the notarization log URL on failure. `notarytool log <id>` is the only thing that says
+- Takes the version as its one argument, and passes it as a `MARKETING_VERSION` build setting
+  override — the version is stated once, not in three files that drift. `CURRENT_PROJECT_VERSION` is
+  overridden with the commit count, which rises on its own as long as main's history isn't rewritten.
+- Refuses to run on a dirty working tree, or unless tag `v<version>` is on the current commit,
+  because a DMG that cannot be traced to a commit is unsupportable.
+- Prints the notarization log on failure. `notarytool log <id>` is the only thing that says
   *why* Apple rejected a submission, and the failure is almost always one un-hardened nested binary.
 - Leaves everything in `build/`, which is git-ignored. The DMG is never committed — see spec `11`.
 
@@ -177,12 +175,12 @@ scale and is exactly what spec `11` tells the user.
 ## Acceptance criteria
 
 - [ ] A **Developer ID Application** certificate exists and its private key is backed up off this Mac.
-- [ ] Release builds are signed with it; Debug still uses Apple Development.
+- [x] Release builds are signed with it; Debug still uses Apple Development.
 - [ ] `Distribution/release.sh <version>` produces `build/Barnacle-<version>.dmg` from a clean tree
       in one command, with no secret in the repo.
 - [ ] `spctl -a -t exec` on the exported app reports `source=Notarized Developer ID`.
 - [ ] `stapler validate` passes on both the app and the DMG.
-- [ ] The binary is universal (`x86_64 arm64`).
+- [x] The binary is universal (`x86_64 arm64`).
 - [ ] On a Mac that has never built the project: the downloaded DMG mounts, drag-to-Applications
       works, and first launch shows only the ordinary "downloaded from the Internet" prompt.
 - [ ] On that same Mac: a scrape delivers a notification and `⌘J` opens the overlay over a
