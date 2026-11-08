@@ -94,14 +94,41 @@ Three decisions worth recording, all consistent with the spec rather than depart
 second form: same fields, same checker, same detection, and the name probe comes along for free —
 which is the spec's own suggested repair for a bad URL.
 
+**Re-measured 2026-11-07:** the eight names above still resolve, but `ramp` now also answers on
+Greenhouse, with one posting titled "Copy of Chief Legal Officer". So "Ramp" lists two rows, Ashby
+first (5 matching roles against 0), and asks for a pick. That is the several-hits rule working as
+written, and exactly the stale board the role count is there to expose.
+
 ## Acceptance criteria
 
-- [ ] Typing "Stripe" in the Add-Company modal finds its Greenhouse board without a URL.
+Checked boxes were confirmed on 2026-11-07 by a standalone harness that compiles the real sources
+and drives `AddCompanyModel` and `CompanyProbe` against the live endpoints, with an in-memory store
+and a stubbed `URLProtocol` for the timing cases. **That exercises the modal's state machine, not
+the rendered sheet.** Nothing here has been seen on screen; the notes say what a person still has
+to look at.
+
+- [x] Typing "Stripe" in the Add-Company modal finds its Greenhouse board without a URL.
+      *(`greenhouse/stripe`, pre-selected, URL filled, checker passes. Rendered row not seen.)*
 - [ ] "Ramp" and "Notion" resolve to Ashby; "Scale AI" slugifies to `scaleai` and resolves.
-- [ ] A name matching several boards lists all of them with role counts and requires a choice.
-- [ ] A name matching nothing falls through to the URL field with a clear message.
+      *(Notion → Ashby and `Scale AI` → `greenhouse/scaleai` both resolve outright. Left open for
+      Ramp: Ashby is found and listed first, but Greenhouse answers too, so it takes a pick rather
+      than resolving by itself. See "Re-measured" above.)*
+- [x] A name matching several boards lists all of them with role counts and requires a choice.
+      *(Vercel: Greenhouse 1, Ashby 0, nothing pre-selected, no URL guessed, nothing savable until
+      a pick. Rendered list not seen.)*
+- [x] A name matching nothing falls through to the URL field with a clear message.
+      *(Exact message, a pasted URL then checks and saves. The cursor moving to the URL field lives
+      in the view and has not been seen.)*
 - [x] Role counts reflect the user's spec-`07` settings, not the board's total.
-- [ ] Probing is parallel and uses the short detection timeout; the modal never hangs.
+      *(Stripe: board total 765, internship 16, new grad 7, Japan-only 0.)*
+- [x] Probing is parallel and uses the short detection timeout; the modal never hangs.
+      *(Six requests in flight at once, 1.02s against 1s responses. A board that never answers:
+      returns at the 15s deadline (15.79s measured) with every request cancelled, and the fields
+      stay editable meanwhile. Slowest live probe 0.52s. The check after a pick is spec `03`'s and still runs on
+      the adapter's 30s request timeout, with Cancel available.)*
 - [x] The chosen result flows through the existing `CompanyURLChecker` outcomes.
 - [ ] `ManageCompaniesView` can edit a company's URL and re-run detection.
+      *(The model half is confirmed against an in-memory store: load, re-check, paste or re-probe,
+      write back onto the same row with the new ATS and token. Left open because the pencil and the
+      sheet over `ManageCompaniesView` have never been opened.)*
 - [x] `xcodebuild -scheme Barnacle -configuration Debug build` succeeds with no new warnings.
