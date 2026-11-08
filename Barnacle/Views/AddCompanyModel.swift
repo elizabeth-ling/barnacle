@@ -30,10 +30,16 @@ final class AddCompanyModel {
     }
 
     /// Editing the name invalidates any boards found for the old one — they'd otherwise sit
-    /// there describing a company the user has stopped typing.
+    /// there describing a company the user has stopped typing. That includes the URL a picked
+    /// board filled in, or the new name would save against the old name's board. A URL the user
+    /// typed themselves stays: a selected board means the field is still the probe's.
     var name = "" {
         didSet {
             guard name != oldValue else { return }
+            if selectedBoardID != nil, !urlFields.isEmpty {
+                urlFields[0].text = ""
+                urlFields[0].outcome = nil
+            }
             search = .idle
             selectedBoardID = nil
             awaitingConfirmation = false
@@ -97,7 +103,8 @@ final class AddCompanyModel {
     var primaryButtonTitle: String {
         switch submitAction {
         case .findBoards: "Find board"
-        case .chooseBoard, .check: "Add"
+        // `isLoaded` is only ever set by `load(from:)`, which is the edit path.
+        case .chooseBoard, .check: isLoaded ? "Save" : "Add"
         case .saveAnyway: "Save anyway"
         }
     }
@@ -151,6 +158,9 @@ final class AddCompanyModel {
     /// `vercel` genuinely answers on two boards and guessing would be wrong about as often as
     /// it's right. Nothing found falls through to the URL field with a message.
     func findBoards() async {
+        // Same double-fire as `check()`: Return queues this twice, and the second must not read
+        // the first's in-flight search as a missing name.
+        guard !isSearching else { return }
         guard canSubmit else {
             formError = "Give the company a name."
             return
@@ -160,7 +170,12 @@ final class AddCompanyModel {
         formError = nil
         selectedBoardID = nil
 
-        let boards = await CompanyProbe.probe(name: trimmedName)
+        let probedName = trimmedName
+        let boards = await CompanyProbe.probe(name: probedName)
+
+        // The fields stay editable during the probe. These results describe a name that's gone,
+        // and selecting one would fill in that company's URL under the new name.
+        guard trimmedName == probedName else { return }
 
         guard !boards.isEmpty else {
             search = .notFound
@@ -169,7 +184,8 @@ final class AddCompanyModel {
         }
 
         search = .found(boards)
-        if boards.count == 1 {
+        // Pre-selecting writes the URL field, so it doesn't get to overwrite one typed meanwhile.
+        if boards.count == 1, !hasEnteredURL {
             select(boards[0])
         }
     }

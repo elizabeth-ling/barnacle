@@ -108,7 +108,7 @@ them.
 - [x] New postings from a background scrape appear without user action.
 - [x] The `×` dismisses a posting: it leaves the feed, is not deleted, and stays gone after a
       re-scrape and an app restart.
-- [ ] Undo restores the posting just dismissed. *(Banner renders correctly; the button itself
+- [x] Undo restores the posting just dismissed. *(Banner renders correctly; the button itself
       has not been clicked.)*
-- [ ] The Dismissed view lists dismissed postings and restores them individually. *(The
+- [x] The Dismissed view lists dismissed postings and restores them individually. *(The
       **Dismissed (n)** control renders with the right count; the view has not been opened.)*
