@@ -42,4 +42,5 @@ struct RootView: View {
         .environment(ScrapeCoordinator(container: BarnacleStore.makeContainer(inMemory: true)))
         .environment(NotificationService())
         .environment(ScrapePreferences())
+        .environment(UpdateController())
 }

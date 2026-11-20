@@ -55,12 +55,20 @@ first two steps did something.
 **Done** is enabled with zero companies. A user who wants to explore first should not be trapped in
 a wizard. The Feed's existing "no companies" empty state already handles that landing.
 
+### Step 4 — Updates (added by spec `12`)
+
+"Keep Barnacle up to date?" The **Install updates automatically** switch, on, and one sentence
+saying what on and off mean. It writes Sparkle's own setting, the same one Settings → Updates
+shows, so the rule that onboarding owns no state still holds. It comes last because it is
+housekeeping; **Done** lives here now, and step 3 says **Continue**. The step indicator has four
+dots.
+
 ## Completion
 
 - Set `onboarding.completed`, dismiss, and kick off the first scrape immediately — the payoff for
   step 3 is postings appearing.
 - **Skip** at any step sets the same flag and keeps the defaults (`.internship`, US + Canada,
-  unknown locations included). A skipped onboarding leaves a working app, never a half-configured
+  unknown locations included, updates installed automatically). A skipped onboarding leaves a working app, never a half-configured
   one.
 - Settings gains **Show onboarding again**, which clears the flag and re-presents. Cheap, and the
   only way to see this flow twice without deleting the container.

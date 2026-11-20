@@ -84,9 +84,10 @@ not build that now. These specs assume native macOS.)*
 | HTML fallback parsing | **SwiftSoup** (SPM) | Only for the "generic" adapter. |
 | Global hotkey | **HotKey** package (soffes/HotKey, wraps Carbon) | Reliable global `⌘J` even when unfocused. |
 | Notifications | `UserNotifications` (native) | Default. Free, zero-setup. |
+| Auto-update | **Sparkle 2** (SPM) | Daily check against an appcast on GitHub Releases; installs on quit unless the user opted out in onboarding. See spec `12`. |
 | Phone push (optional) | **ntfy** via `URLSession` (one HTTP POST) | Off by default; reaches the user's iPhone. Twilio SMS is an alternative; iMessage is avoided. See spec `04`. |
 
-Dependencies are intentionally few: `HotKey` and `SwiftSoup`. Everything else — including the
+Dependencies are intentionally few: `HotKey`, `SwiftSoup`, and `Sparkle` (spec `12`). Everything else — including the
 optional ntfy phone push, which is just an HTTP POST — uses first-party Apple frameworks.
 
 ---

@@ -7,6 +7,7 @@ struct MenuBarContent: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
     @Environment(QuickAddOverlay.self) private var overlay
+    @Environment(UpdateController.self) private var updates
 
     var body: some View {
         Button("Open Barnacle") {
@@ -27,6 +28,11 @@ struct MenuBarContent: View {
         .disabled(scrapeCoordinator.isScraping)
 
         Divider()
+
+        Button("Check for Updates\u{2026}") {
+            updates.checkForUpdates()
+        }
+        .disabled(!updates.canCheckForUpdates)
 
         Button("Quit Barnacle") {
             NSApp.terminate(nil)

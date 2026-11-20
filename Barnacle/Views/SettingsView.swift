@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Environment(NotificationService.self) private var notifications
     @Environment(ScrapePreferences.self) private var scrapePreferences
     @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
+    @Environment(UpdateController.self) private var updates
     @Environment(\.modelContext) private var modelContext
 
     /// Every posting, counted in memory — the same one-user scale that lets the Feed sort in
@@ -76,6 +77,11 @@ struct SettingsView: View {
             Hairline()
                 .padding(.vertical, 2)
 
+            UpdateSettingsSection(updates: updates)
+
+            Hairline()
+                .padding(.vertical, 2)
+
             onboardingSection
         }
         .padding(Theme.Metrics.screenPadding)
@@ -115,7 +121,7 @@ struct SettingsView: View {
                 Spacer(minLength: 8)
             }
 
-            Text("Walks back through role, countries, and companies in the main window. Nothing is reset \u{2014} the steps start from what\u{2019}s set here.")
+            Text("Walks back through role, countries, companies, and updates in the main window. Nothing is reset \u{2014} the steps start from what\u{2019}s set here.")
                 .font(Theme.Typography.metadata)
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -329,4 +335,5 @@ struct SettingsView: View {
         .environment(NotificationService())
         .environment(ScrapePreferences())
         .environment(ScrapeCoordinator(container: BarnacleStore.makeContainer(inMemory: true)))
+        .environment(UpdateController())
 }

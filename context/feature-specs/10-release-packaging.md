@@ -160,7 +160,7 @@ entire point.
 
 - **Mac App Store.** Different certificate, review, and a receipt check; nothing here is wasted if
   it ever happens, but it is not this spec.
-- **Auto-update.** See below.
+- **Auto-update.** Now spec `12`.
 - **Homebrew cask, `pkg` installer, MDM.** A DMG is what the ask describes.
 - **Crash reporting or analytics.** This is still a single-user app that happens to be downloadable.
 
@@ -169,8 +169,7 @@ entire point.
 **Sparkle** is the answer to "how do users get 1.1." It needs an EdDSA key pair, an `appcast.xml`
 served from the same host as the DMG, `SUFeedURL` in the Info.plist, and — because Barnacle is
 sandboxed — Sparkle 2's XPC services bundled and signed alongside the app. That is a real spec, not
-a checkbox. Until it exists, a new version means re-downloading from the page, which is fine at this
-scale and is exactly what spec `11` tells the user.
+a checkbox. **It is now spec `12`**, which also extends `release.sh` to write the appcast.
 
 ## Acceptance criteria
 

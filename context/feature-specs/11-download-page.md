@@ -80,8 +80,9 @@ Then, in this order:
 4. **Build it yourself** — the developer section, last: requirements, `open Barnacle.xcodeproj`, and
    a pointer to `context/` for the specs. This replaces the current "tech stack" and "todo" lines.
 
-Nothing about updates beyond a line saying new versions appear on the Releases page and are
-installed by downloading again, which is honest until Sparkle exists (spec `10`, "Later").
+Since spec `12`, installed copies update themselves from the appcast attached to the latest
+release, so the README says so in one line under "what it asks for" instead of telling people to
+download again.
 
 **The release notes carry the install steps too.** Someone linked straight to
 `/releases/tag/v1.0` never sees the README, so `gh release create --notes` gets the same three lines

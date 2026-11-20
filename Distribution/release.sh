@@ -1,11 +1,13 @@
 #!/bin/bash
 #
-# Builds a notarized, stapled build/Barnacle-<version>.dmg. See spec 10.
+# Builds a notarized, stapled build/Barnacle-<version>.dmg and the build/appcast.xml that tells
+# installed copies about it. See specs 10 and 12.
 #
 #   git tag v1.0 && Distribution/release.sh 1.0
 #
-# One-time setup, by hand (the secret stays in the login keychain):
+# One-time setup, by hand (both secrets stay in the login keychain):
 #   xcrun notarytool store-credentials barnacle --apple-id <appleid> --team-id ART77YDPX6
+#   build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys   # Sparkle's EdDSA key
 #
 # The version is stated here and nowhere else: it reaches the app as a build setting override.
 # The build number is the commit count, which only rises as long as main's history isn't rewritten.
@@ -15,6 +17,9 @@ set -euo pipefail
 readonly TEAM_ID="ART77YDPX6"
 readonly BUNDLE_ID="com.elizabeth.barnacle"
 readonly NOTARY_PROFILE="barnacle"
+readonly REPO_URL="https://github.com/elizabeth-ling/barnacle"
+readonly PACKAGES_DIR="build/SourcePackages"
+readonly SPARKLE_BIN="$PACKAGES_DIR/artifacts/sparkle/Sparkle/bin"
 
 fail() {
     echo "error: $*" >&2
@@ -109,20 +114,32 @@ if ! profile_check=$(xcrun notarytool history --keychain-profile "$NOTARY_PROFIL
   xcrun notarytool store-credentials $NOTARY_PROFILE --apple-id <appleid> --team-id $TEAM_ID"
 fi
 
+# Resolved into a known directory so Sparkle's signing tools are at a fixed path.
+xcodebuild -quiet -resolvePackageDependencies -scheme Barnacle -clonedSourcePackagesDirPath "$PACKAGES_DIR"
+[[ -x "$SPARKLE_BIN/sign_update" ]] || fail "Sparkle's tools aren't in $SPARKLE_BIN"
+
+# An app whose SUPublicEDKey doesn't match the keychain's private key can never accept an update,
+# and nobody finds out until the release after this one. Refuse now instead.
+sparkle_key=$("$SPARKLE_BIN/generate_keys" -p 2>/dev/null) ||
+    fail "no Sparkle signing key in the keychain; create one once with: $SPARKLE_BIN/generate_keys"
+[[ "$(plutil -extract SUPublicEDKey raw -o - Barnacle/Info.plist)" == "$sparkle_key" ]] ||
+    fail "SUPublicEDKey in Barnacle/Info.plist doesn't match the keychain's Sparkle key ($sparkle_key)"
+
 readonly ARCHIVE="build/Barnacle.xcarchive"
 readonly EXPORT_DIR="build/export"
 readonly STAGE_DIR="build/stage"
 readonly APP="$EXPORT_DIR/Barnacle.app"
 readonly DMG="build/Barnacle-$VERSION.dmg"
+readonly APPCAST="build/appcast.xml"
 
-rm -rf "$ARCHIVE" "$EXPORT_DIR" "$STAGE_DIR" "$DMG"
+rm -rf "$ARCHIVE" "$EXPORT_DIR" "$STAGE_DIR" "$DMG" "$APPCAST"
 
 step "Archiving $VERSION"
 # Archiving, not building: only an archive strips get-task-allow, and notarization refuses it.
 # This signs with Apple Development; the export below re-signs with Developer ID. Automatic signing
 # rejects a Developer ID identity at this stage, so the project's settings can't name it.
 xcodebuild -quiet -scheme Barnacle -configuration Release -destination "generic/platform=macOS" \
-    -archivePath "$ARCHIVE" archive \
+    -archivePath "$ARCHIVE" -clonedSourcePackagesDirPath "$PACKAGES_DIR" archive \
     MARKETING_VERSION="$VERSION" \
     CURRENT_PROJECT_VERSION="$(git rev-list --count HEAD)"
 
@@ -150,5 +167,32 @@ xcrun stapler staple "$DMG"
 step "Verifying"
 verify "$APP" "$DMG"
 
+step "Writing the appcast"
+# Signs the DMG exactly as uploaded: stapling changes its bytes, so this has to come after it.
+# One item is enough — Sparkle only needs to hear about the newest build.
+signature=$("$SPARKLE_BIN/sign_update" "$DMG")
+build_number=$(plutil -extract CFBundleVersion raw -o - "$APP/Contents/Info.plist")
+cat >"$APPCAST" <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Barnacle</title>
+    <item>
+      <title>Barnacle $VERSION</title>
+      <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
+      <sparkle:version>$build_number</sparkle:version>
+      <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>$REPO_URL/releases/tag/v$VERSION</sparkle:fullReleaseNotesLink>
+      <enclosure url="$REPO_URL/releases/download/v$VERSION/Barnacle-$VERSION.dmg"
+                 type="application/octet-stream" $signature />
+    </item>
+  </channel>
+</rss>
+XML
+xmllint --noout "$APPCAST"
+
 echo
-echo "Built $DMG. Now test it on a Mac that has never built this project."
+echo "Built $DMG and $APPCAST. Now test the DMG on a Mac that has never built this project."
+echo "Publish both together — installed copies read the appcast from the latest release:"
+echo "  gh release create v$VERSION $DMG $APPCAST"

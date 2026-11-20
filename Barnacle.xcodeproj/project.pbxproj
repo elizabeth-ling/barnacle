@@ -9,15 +9,29 @@
 /* Begin PBXBuildFile section */
 		BA0000000000000000000014 /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = BA0000000000000000000012 /* HotKey */; };
 		BA0000000000000000000015 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = BA0000000000000000000013 /* SwiftSoup */; };
+		BA0000000000000000000018 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = BA0000000000000000000017 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		BA0000000000000000000006 /* Barnacle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Barnacle.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BA0000000000000000000019 /* Exceptions for "Barnacle" folder in "Barnacle" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BA0000000000000000000005 /* Barnacle */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		BA0000000000000000000004 /* Barnacle */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BA0000000000000000000019 /* Exceptions for "Barnacle" folder in "Barnacle" target */,
+			);
 			path = Barnacle;
 			sourceTree = "<group>";
 		};
@@ -30,6 +44,7 @@
 			files = (
 				BA0000000000000000000014 /* HotKey in Frameworks */,
 				BA0000000000000000000015 /* SwiftSoup in Frameworks */,
+				BA0000000000000000000018 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +89,7 @@
 			packageProductDependencies = (
 				BA0000000000000000000012 /* HotKey */,
 				BA0000000000000000000013 /* SwiftSoup */,
+				BA0000000000000000000017 /* Sparkle */,
 			);
 			productName = Barnacle;
 			productReference = BA0000000000000000000006 /* Barnacle.app */;
@@ -106,6 +122,7 @@
 			packageReferences = (
 				BA0000000000000000000010 /* XCRemoteSwiftPackageReference "HotKey" */,
 				BA0000000000000000000011 /* XCRemoteSwiftPackageReference "SwiftSoup" */,
+				BA0000000000000000000016 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BA0000000000000000000003 /* Products */;
@@ -242,6 +259,7 @@
 				DEVELOPMENT_TEAM = ART77YDPX6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Barnacle/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -268,6 +286,7 @@
 				DEVELOPMENT_TEAM = ART77YDPX6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Barnacle/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -322,6 +341,14 @@
 				minimumVersion = 2.9.6;
 			};
 		};
+		BA0000000000000000000016 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.10.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -334,6 +361,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BA0000000000000000000011 /* XCRemoteSwiftPackageReference "SwiftSoup" */;
 			productName = SwiftSoup;
+		};
+		BA0000000000000000000017 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BA0000000000000000000016 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

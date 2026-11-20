@@ -1,12 +1,13 @@
 import SwiftUI
 import SwiftData
 
-/// First-run onboarding (spec `09`): the three decisions the app actually depends on — what
-/// role, which countries, which companies — asked once, in order.
+/// First-run onboarding (spec `09`): the decisions the app actually depends on — what role,
+/// which countries, which companies, and whether updates install themselves (spec `12`) — asked
+/// once, in order.
 ///
 /// **Onboarding owns no state.** Steps 1 and 2 write straight into the same `ScrapePreferences`
-/// object `SettingsView` edits (spec `07`), and step 3 opens the same add-company modal the
-/// Feed's `+` opens (spec `08`). The only thing this view keeps is which step is on screen and
+/// object `SettingsView` edits (spec `07`), step 3 opens the same add-company modal the Feed's
+/// `+` opens (spec `08`), and step 4 flips the same Sparkle setting Settings does. The only thing this view keeps is which step is on screen and
 /// whether that modal is up. If it ever needs a model of its own, something has been duplicated.
 struct OnboardingView: View {
     /// Set once the flow has been seen. `RootView` presents onboarding while this is absent or
@@ -15,6 +16,7 @@ struct OnboardingView: View {
 
     @Environment(ScrapePreferences.self) private var preferences
     @Environment(ScrapeCoordinator.self) private var scrapeCoordinator
+    @Environment(UpdateController.self) private var updates
     @Environment(\.dismiss) private var dismiss
 
     /// Step 3's list: the companies added so far, which is also every company the app tracks.
@@ -29,6 +31,7 @@ struct OnboardingView: View {
         case role
         case countries
         case companies
+        case updates
 
         var id: Int { rawValue }
 
@@ -37,6 +40,7 @@ struct OnboardingView: View {
             case .role: "What are you looking for?"
             case .countries: "Where would you work?"
             case .companies: "Which companies are you tracking?"
+            case .updates: "Keep Barnacle up to date?"
             }
         }
 
@@ -47,8 +51,8 @@ struct OnboardingView: View {
     }
 
     /// Zero countries is the one state a step blocks on: spec `09` wants at least one before
-    /// Continue enables. Nothing else here can be wrong — a role level is always set, and step 3
-    /// is finishable with no companies at all.
+    /// Continue enables. Nothing else here can be wrong — a role level is always set, step 3 is
+    /// finishable with no companies at all, and step 4 is a switch that is always on or off.
     private var canGoForward: Bool {
         step != .countries || !preferences.countries.isEmpty
     }
@@ -89,6 +93,7 @@ struct OnboardingView: View {
         case .role: roleStep
         case .countries: countryStep
         case .companies: companyStep
+        case .updates: updateStep
         }
     }
 
@@ -159,6 +164,12 @@ struct OnboardingView: View {
         }
     }
 
+    /// Step 4 (spec `12`). Last, because it is housekeeping rather than what the app is for —
+    /// and on by default, so Skip from any earlier step leaves updates installing themselves.
+    private var updateStep: some View {
+        AutoUpdateToggle(updates: updates)
+    }
+
     // MARK: - Chrome
 
     private var footer: some View {
@@ -168,7 +179,8 @@ struct OnboardingView: View {
             Spacer(minLength: 8)
 
             // Skipping keeps whatever is set, which on an untouched flow is the defaults:
-            // internships, US + Canada, unknown locations included. Never half-configured.
+            // internships, US + Canada, unknown locations included, updates installed
+            // automatically. Never half-configured.
             Button("Skip") { complete() }
                 .buttonStyle(.barnacleSecondary)
 
@@ -194,7 +206,7 @@ struct OnboardingView: View {
     }
 }
 
-/// Three dots, not a progress bar: three steps don't need a percentage (spec `09`).
+/// Dots, not a progress bar: four steps don't need a percentage (spec `09`).
 private struct StepIndicator: View {
     let current: Int
     let count: Int
@@ -216,4 +228,5 @@ private struct StepIndicator: View {
         .modelContainer(BarnacleStore.makeContainer(inMemory: true))
         .environment(ScrapePreferences())
         .environment(ScrapeCoordinator(container: BarnacleStore.makeContainer(inMemory: true)))
+        .environment(UpdateController())
 }

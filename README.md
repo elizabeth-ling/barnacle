@@ -22,6 +22,7 @@ the first launch asks "are you sure you want to open it?" — that's macOS's sta
 
 - permission to send notifications
 - network access to the careers pages of the companies you add — and to ntfy.sh, only if you turn on iPhone notifications
+- a daily check on GitHub for a new version. setup asks whether to install updates automatically; you can change it in Settings
 
 no account, nothing else. your data stays on your Mac.
 

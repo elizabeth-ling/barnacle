@@ -22,6 +22,9 @@ struct BarnacleApp: App {
     /// change lands on the next scrape without a restart.
     @State private var scrapePreferences: ScrapePreferences
 
+    /// Sparkle (spec `12`). On the app because the daily check has to run with no window open.
+    @State private var updates = UpdateController()
+
     init() {
         let notifications = NotificationService()
         // Before the app finishes launching: a notification clicked while Barnacle is closed
@@ -56,6 +59,7 @@ struct BarnacleApp: App {
                 .environment(scrapeCoordinator)
                 .environment(notifications)
                 .environment(scrapePreferences)
+                .environment(updates)
                 .registersMainWindowOpener(with: notifications)
                 // Two tasks, not one: `requestAuthorization` suspends until the user answers
                 // the system prompt, and the first scrape must not wait behind that.
@@ -71,6 +75,7 @@ struct BarnacleApp: App {
             MenuBarContent()
                 .environment(scrapeCoordinator)
                 .environment(overlay)
+                .environment(updates)
         }
         .modelContainer(BarnacleStore.shared)
 
@@ -81,6 +86,7 @@ struct BarnacleApp: App {
                 .environment(notifications)
                 .environment(scrapePreferences)
                 .environment(scrapeCoordinator)
+                .environment(updates)
         }
         .modelContainer(BarnacleStore.shared)
     }
