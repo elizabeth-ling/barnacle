@@ -74,6 +74,10 @@ release goes through `archive`, never through the plain `build` the project uses
 
 Six steps, in this order. `Distribution/release.sh <version>` implements them.
 
+> **Superseded in part by spec `13`:** the archive now signs manually with Developer ID (build-setting
+> override; the project file is still unchanged) and the export uses `signingStyle` = `manual`, so
+> the same script runs in CI where no Apple account is signed in to Xcode.
+
 1. **Archive.**
    `xcodebuild -scheme Barnacle -configuration Release -destination generic/platform=macOS
    -archivePath build/Barnacle.xcarchive archive`

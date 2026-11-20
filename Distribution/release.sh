@@ -9,6 +9,9 @@
 #   xcrun notarytool store-credentials barnacle --apple-id <appleid> --team-id ART77YDPX6
 #   build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys   # Sparkle's EdDSA key
 #
+# Pushing the tag also runs this in CI (.github/workflows/release.yml, spec 13), which loads the
+# same secrets into a throwaway keychain and sets NOTARY_KEYCHAIN to it.
+#
 # The version is stated here and nowhere else: it reaches the app as a build setting override.
 # The build number is the commit count, which only rises as long as main's history isn't rewritten.
 
@@ -20,6 +23,12 @@ readonly NOTARY_PROFILE="barnacle"
 readonly REPO_URL="https://github.com/elizabeth-ling/barnacle"
 readonly PACKAGES_DIR="build/SourcePackages"
 readonly SPARKLE_BIN="$PACKAGES_DIR/artifacts/sparkle/Sparkle/bin"
+
+# Locally the profile is in the login keychain; CI names the throwaway keychain that holds it.
+notary_auth=(--keychain-profile "$NOTARY_PROFILE")
+if [[ -n "${NOTARY_KEYCHAIN:-}" ]]; then
+    notary_auth+=(--keychain "$NOTARY_KEYCHAIN")
+fi
 
 fail() {
     echo "error: $*" >&2
@@ -42,7 +51,7 @@ notarize() {
     fi
 
     # Stderr stays on the terminal: anything in it would corrupt the JSON parsed below.
-    output=$(xcrun notarytool submit "$upload" --keychain-profile "$NOTARY_PROFILE" --wait \
+    output=$(xcrun notarytool submit "$upload" "${notary_auth[@]}" --wait \
         --output-format json) || true
     status=$(plutil -extract status raw -o - - <<<"$output" 2>/dev/null) || status=""
     id=$(plutil -extract id raw -o - - <<<"$output" 2>/dev/null) || id=""
@@ -50,7 +59,7 @@ notarize() {
     if [[ "$status" != "Accepted" ]]; then
         echo "$output" >&2
         if [[ -n "$id" ]]; then
-            xcrun notarytool log "$id" --keychain-profile "$NOTARY_PROFILE" >&2 || true
+            xcrun notarytool log "$id" "${notary_auth[@]}" >&2 || true
             echo "Fetch this log again with: xcrun notarytool log $id --keychain-profile $NOTARY_PROFILE" >&2
         fi
         fail "notarization of $(basename "$file") ended with status '${status:-unknown}'"
@@ -108,7 +117,7 @@ identity=$(awk -v team="($TEAM_ID)" \
     '/Developer ID Application:/ && index($0, team) { print $2; exit }' <<<"$identities")
 [[ -n "$identity" ]] || fail "no Developer ID Application identity for team $TEAM_ID in the keychain"
 
-if ! profile_check=$(xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" 2>&1); then
+if ! profile_check=$(xcrun notarytool history "${notary_auth[@]}" 2>&1); then
     echo "$profile_check" >&2
     fail "can't use the notary profile '$NOTARY_PROFILE'. If it's missing, create it once with:
   xcrun notarytool store-credentials $NOTARY_PROFILE --apple-id <appleid> --team-id $TEAM_ID"
@@ -136,17 +145,20 @@ rm -rf "$ARCHIVE" "$EXPORT_DIR" "$STAGE_DIR" "$DMG" "$APPCAST"
 
 step "Archiving $VERSION"
 # Archiving, not building: only an archive strips get-task-allow, and notarization refuses it.
-# This signs with Apple Development; the export below re-signs with Developer ID. Automatic signing
-# rejects a Developer ID identity at this stage, so the project's settings can't name it.
+# Signed manually with Developer ID, overriding the project's automatic Apple Development signing:
+# automatic signing needs an Apple account signed in to Xcode, which CI doesn't have, and rejects a
+# Developer ID identity outright. Manual signing needs neither, because no entitlement here is
+# profile-gated. Debug builds are untouched.
 xcodebuild -quiet -scheme Barnacle -configuration Release -destination "generic/platform=macOS" \
     -archivePath "$ARCHIVE" -clonedSourcePackagesDirPath "$PACKAGES_DIR" archive \
+    CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application" DEVELOPMENT_TEAM="$TEAM_ID" \
     MARKETING_VERSION="$VERSION" \
     CURRENT_PROJECT_VERSION="$(git rev-list --count HEAD)"
 
 step "Exporting with Developer ID"
 xcodebuild -quiet -exportArchive -archivePath "$ARCHIVE" \
     -exportOptionsPlist Distribution/ExportOptions.plist \
-    -exportPath "$EXPORT_DIR" -allowProvisioningUpdates
+    -exportPath "$EXPORT_DIR"
 
 step "Notarizing and stapling the app"
 # Stapled before packaging, so the copy dragged to /Applications verifies offline forever.

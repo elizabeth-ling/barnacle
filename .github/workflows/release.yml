@@ -1,0 +1,92 @@
+# Pushing a version tag builds, notarizes, and drafts the GitHub Release for it. See spec 13.
+#
+#   git tag v1.2 && git push origin v1.2
+#
+# The release is left as a draft: installed copies follow releases/latest, and a draft isn't
+# "latest" until it is published, so nothing reaches anyone before the DMG has been tried on a
+# second Mac.
+
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Matches the Xcode the project is developed with. Apple Silicon only; the build is still
+    # universal, and release.sh refuses one that isn't.
+    runs-on: xcode-27
+    timeout-minutes: 60
+    # The secrets live on this environment, which only v* tags may deploy to, so a workflow edited
+    # on a branch can't read them.
+    environment: release
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # release.sh numbers the build by commit count, which a shallow clone reports as 1.
+          fetch-depth: 0
+
+      - name: Load signing secrets into a throwaway keychain
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          password=$(openssl rand -base64 32)
+
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          # First in the search list and the default, so codesign and Sparkle's tools find it
+          # exactly as they find the login keychain on the development Mac.
+          security list-keychains -d user | xargs security list-keychains -d user -s "$keychain"
+          security default-keychain -d user -s "$keychain"
+
+          p12="$RUNNER_TEMP/developer-id.p12"
+          base64 --decode <<<"$DEVELOPER_ID_P12" >"$p12"
+          security import "$p12" -k "$keychain" -P "$DEVELOPER_ID_P12_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$p12"
+          # Lets codesign use the key without a GUI prompt nobody is there to answer.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" \
+            "$keychain" >/dev/null
+
+          xcrun notarytool store-credentials barnacle --apple-id "$NOTARY_APPLE_ID" \
+            --team-id ART77YDPX6 --password "$NOTARY_PASSWORD" --keychain "$keychain"
+
+          # The item generate_keys would have made; -A lets sign_update read it without a prompt.
+          security add-generic-password -a ed25519 -s https://sparkle-project.org \
+            -l "Private key for signing Sparkle updates" -w "$SPARKLE_PRIVATE_KEY" -A "$keychain"
+
+          echo "NOTARY_KEYCHAIN=$keychain" >>"$GITHUB_ENV"
+
+      - name: Build, notarize, and write the appcast
+        run: Distribution/release.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Draft the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" "build/Barnacle-$version.dmg" build/appcast.xml \
+            --draft --verify-tag --title "Barnacle $version" --generate-notes
+
+      - name: Delete the keychain
+        if: always()
+        run: |
+          if [[ -n "${NOTARY_KEYCHAIN:-}" ]]; then
+            security delete-keychain "$NOTARY_KEYCHAIN"
+          fi
