@@ -2,9 +2,9 @@
 
 tracks internship postings from the companies you pick, tells you when something new appears, and logs what you applied to.
 
-![dashboard screenshot!!](assets/dashboard-screenshot.png)
-
 ### [Download for macOS](https://github.com/elizabeth-ling/barnacle/releases/download/v1.0/Barnacle-1.0.dmg)
+
+![dashboard screenshot!!](assets/dashboard-screenshot.png)
 
 v1.0 · Requires macOS 14 or later
 
